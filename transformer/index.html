@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How a Transformer reads a sentence: a hands-on guide to "The Illustrated Transformer"</title>
+<meta name="description" content="An interactive, plain-English companion to Jay Alammar's The Illustrated Transformer: attention, queries, keys and values, multi-head attention, positional encoding and decoding.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="brand" href="../">Papers, decoded</a>
+  <nav aria-label="Chapters">
+    <a href="#layout">Layout</a>
+    <a href="#numbers">Words to numbers</a>
+    <a href="#attention">Self-attention</a>
+    <a href="#heads">Heads</a>
+    <a href="#decoder">Decoder</a>
+    <a href="#training">Training</a>
+    <a href="#glossary">Glossary</a>
+  </nav>
+</header>
+
+<main>
+<section class="hero" aria-labelledby="title">
+  <h1 id="title">How a Transformer reads a sentence</h1>
+  <p class="lede">A Transformer understands a word by looking at the other words around it. That looking is called <dfn>attention</dfn>, and it's the idea behind ChatGPT, Google Translate and almost every modern language model.</p>
+  <p class="source">A hands-on companion to Jay Alammar's <a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">The Illustrated Transformer</a>, which explains the 2017 paper <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need</a>.</p>
+
+  <div class="stage">
+    <div class="controls" role="group" aria-label="Attention head">
+      <span class="label">Attention head:</span>
+      <button class="btn" data-head="0" aria-pressed="true">Who is it?</button>
+      <button class="btn" data-head="1" aria-pressed="false">What is it like?</button>
+      <span class="label" style="margin-left:12px">Last word:</span>
+      <button class="btn" data-end="tired" aria-pressed="true">tired</button>
+      <button class="btn" data-end="wide" aria-pressed="false">wide</button>
+    </div>
+    <svg class="arcs" id="arcs" viewBox="0 0 1040 300" role="group" aria-label="The sentence. Choose a word to see which words it pays attention to."></svg>
+    <p class="reading" id="reading" aria-live="polite"></p>
+    <div class="legend-inline"><span><i style="background:var(--q)"></i>the word being read (its <b>query</b>)</span><span><i style="background:var(--k)"></i>the words it looks at; thicker line = more attention</span></div>
+  </div>
+  <p class="note">Click or tab to any word. Try "it" with each last word: "tired" describes an animal, "wide" describes a street, so "it" changes what it attends to. Weights are hand-made to match the article's figures, not taken from a trained model.</p>
+</section>
+
+<!-- 1 -->
+<section class="chapter" id="layout">
+  <div class="chapter-head"><span class="num">1</span><h2>The machine's layout</h2></div>
+  <div class="indent prose">
+    <p>The article's example is translation. A French sentence goes in and an English one comes out. From far away, the Transformer is a black box. Open it and there are two halves.</p>
+    <p>The <dfn>encoder</dfn> reads the whole input sentence and builds an understanding of every word. The <dfn>decoder</dfn> writes the output one word at a time, checking back with the encoder as it goes. The paper stacks six encoders and six decoders. Each encoder layer has the same shape but its own <dfn>weights</dfn>, the numbers it learns during training.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Open the box</p>
+    <p class="bench-help">Open the box, then click each part to see what it does.</p>
+    <div class="controls"><button class="btn" id="open-box" aria-pressed="false">Open the box</button></div>
+    <svg class="arch" id="arch" viewBox="0 0 760 540" role="group" aria-label="Transformer architecture">
+      <text x="575" y="22" text-anchor="middle" font-size="16" font-weight="700">Next word: "student"</text>
+      <g id="arch-inner">
+        <rect x="30" y="130" width="310" height="300" rx="6" fill="none" stroke="#BCC3BC" stroke-width="2" stroke-dasharray="6 5"/>
+        <text x="46" y="156" font-size="16" font-weight="700">Encoder</text>
+        <rect x="420" y="96" width="310" height="334" rx="6" fill="none" stroke="#BCC3BC" stroke-width="2" stroke-dasharray="6 5"/>
+        <text x="436" y="122" font-size="16" font-weight="700">Decoder</text>
+        <path d="M185 130 V108 H380 V300 H438" fill="none" stroke="#6A45D9" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M432 293 l9 7 -9 7" fill="none" stroke="#6A45D9" stroke-width="3"/>
+        <text x="196" y="100" font-size="13" fill="#6A45D9">keys and values from the encoder</text>
+
+        <g class="part" data-part="stack" tabindex="0" role="button" aria-label="Six layers">
+          <rect x="268" y="138" width="62" height="30" rx="15" fill="#fff" stroke="#1C2320" stroke-width="2"/>
+          <text x="299" y="158" text-anchor="middle" font-size="15" font-weight="700">×6</text>
+        </g>
+        <g class="part" data-part="enc-self" tabindex="0" role="button" aria-label="Encoder self-attention">
+          <rect x="50" y="320" width="270" height="60" rx="4" fill="#D3EDE6" stroke="#0E7C66" stroke-width="2"/>
+          <text x="185" y="356" text-anchor="middle" font-size="16" font-weight="700">Self-attention</text>
+        </g>
+        <g class="part" data-part="enc-ffn" tabindex="0" role="button" aria-label="Encoder feed-forward network">
+          <rect x="50" y="200" width="270" height="60" rx="4" fill="#F7E9C4" stroke="#D99A00" stroke-width="2"/>
+          <text x="185" y="236" text-anchor="middle" font-size="16" font-weight="700">Feed-forward network</text>
+        </g>
+        <g class="part" data-part="dec-self" tabindex="0" role="button" aria-label="Decoder masked self-attention">
+          <rect x="440" y="350" width="270" height="56" rx="4" fill="#D3EDE6" stroke="#0E7C66" stroke-width="2"/>
+          <text x="575" y="384" text-anchor="middle" font-size="16" font-weight="700">Masked self-attention</text>
+        </g>
+        <g class="part" data-part="enc-dec" tabindex="0" role="button" aria-label="Encoder-decoder attention">
+          <rect x="440" y="272" width="270" height="56" rx="4" fill="#E6DFFA" stroke="#6A45D9" stroke-width="2"/>
+          <text x="575" y="306" text-anchor="middle" font-size="16" font-weight="700">Encoder-decoder attention</text>
+        </g>
+        <g class="part" data-part="dec-ffn" tabindex="0" role="button" aria-label="Decoder feed-forward network">
+          <rect x="440" y="194" width="270" height="56" rx="4" fill="#F7E9C4" stroke="#D99A00" stroke-width="2"/>
+          <text x="575" y="228" text-anchor="middle" font-size="16" font-weight="700">Feed-forward network</text>
+        </g>
+        <g class="part" data-part="out" tabindex="0" role="button" aria-label="Linear and softmax">
+          <rect x="420" y="36" width="310" height="44" rx="4" fill="#fff" stroke="#1C2320" stroke-width="2"/>
+          <text x="575" y="64" text-anchor="middle" font-size="16" font-weight="700">Linear + softmax</text>
+        </g>
+        <g class="part" data-part="enc-in" tabindex="0" role="button" aria-label="Encoder input: embedding and position">
+          <rect x="30" y="446" width="310" height="44" rx="4" fill="#fff" stroke="#1C2320" stroke-width="2"/>
+          <text x="185" y="474" text-anchor="middle" font-size="15" font-weight="700">Embedding + position</text>
+        </g>
+        <g class="part" data-part="dec-in" tabindex="0" role="button" aria-label="Decoder input: words written so far">
+          <rect x="420" y="446" width="310" height="44" rx="4" fill="#fff" stroke="#1C2320" stroke-width="2"/>
+          <text x="575" y="474" text-anchor="middle" font-size="15" font-weight="700">Embedding + position</text>
+        </g>
+        <text x="185" y="525" text-anchor="middle" font-size="15">je suis étudiant</text>
+        <text x="575" y="525" text-anchor="middle" font-size="15">i am a</text>
+      </g>
+      <g id="arch-box">
+        <rect x="30" y="96" width="700" height="394" rx="8" fill="#1C2320"/>
+        <text x="380" y="285" text-anchor="middle" font-size="30" font-weight="700" fill="#fff" style="font-family:var(--display)">Transformer</text>
+        <text x="185" y="525" text-anchor="middle" font-size="15">je suis étudiant</text>
+        <text x="575" y="525" text-anchor="middle" font-size="15">i am a</text>
+      </g>
+    </svg>
+    <div class="explain" id="arch-explain" aria-live="polite"><p>The black box takes a French sentence and writes English. Open it to see the parts.</p></div>
+  </div>
+  <div class="indent prose">
+    <p>One property matters a lot. Inside the encoder, every word flows along its own path. The paths only mix in self-attention; in the feed-forward network each word is processed separately. So all the words can be processed at the same time, in <dfn>parallel</dfn>. Older models such as <dfn>RNNs</dfn> read one word after another. That parallelism is why Transformers train so much faster.</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="chapter" id="numbers">
+  <div class="chapter-head"><span class="num">2</span><h2>Words become numbers</h2></div>
+  <div class="indent prose">
+    <p>A model can only do math, so each word is first turned into a list of numbers called a <dfn>vector</dfn>. This step is the <dfn>embedding</dfn>. In the paper each word becomes 512 numbers. Below, each word is drawn as 16 colored cells, with darker meaning a bigger number.</p>
+    <p>There's a catch. Self-attention treats the sentence as a bag of words, with no sense of order. To fix that, the model adds a second vector to each word, a <dfn>positional encoding</dfn>, that says where the word sits.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Same words, different order</p>
+    <p class="bench-help">Without positions, "dog bites man" and "man bites dog" hand the model exactly the same three vectors. Add positions and compare.</p>
+    <div class="controls"><label class="toggle"><input type="checkbox" id="add-pos"> Add positional encoding</label></div>
+    <div class="pair">
+      <div><h4>dog bites man</h4><div class="vec-rows" id="sent-a"></div></div>
+      <div><h4>man bites dog</h4><div class="vec-rows" id="sent-b"></div></div>
+    </div>
+    <div class="verdict" id="pos-verdict"></div>
+  </div>
+  <div class="bench">
+    <p class="bench-title">What a positional encoding looks like</p>
+    <p class="bench-help">Each row is the position vector added to the word in that position (1 to 20). Each column is one of its numbers. The left half comes from sine waves and the right half from cosine waves, each at many speeds, so every row is a unique pattern. Hover or tap a row.</p>
+    <svg class="pe" id="pe" viewBox="0 0 720 330" role="img" aria-label="Positional encoding heatmap for 20 positions"></svg>
+    <p class="note" id="pe-note">Darker = closer to +1, lighter = closer to −1. Shown with 64 numbers per position instead of 512 so the pattern is visible, and laid out as in the article's figure. The paper interleaves the sine and cosine columns instead; the information is the same.</p>
+  </div>
+  <div class="indent prose">
+    <p>Because the pattern comes from a formula, the model can produce positions for sentences longer than any it saw in training.</p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="chapter" id="attention">
+  <div class="chapter-head"><span class="num">3</span><h2>Self-attention, step by step</h2></div>
+  <div class="indent prose">
+    <p><dfn>Self-attention</dfn> lets each word gather clues from the other words in the same sentence. It works like a search. Each word makes three new vectors from its embedding:</p>
+    <p><b class="c-q">Query</b>: what this word is looking for.<br><b class="c-k">Key</b>: the label each word advertises, so others can find it.<br><b class="c-v">Value</b>: the information a word hands over once it's found.</p>
+    <p>They're made by multiplying the embedding by three weight matrices, <code>W<sup>Q</sup></code>, <code>W<sup>K</sup></code> and <code>W<sup>V</sup></code>, that the model learns in training. They have 64 numbers each, smaller than the 512 in the embedding.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Six steps, using the article's example</p>
+    <p class="bench-help">The sentence is "Thinking Machines". Choose which word is reading, then walk through the steps.</p>
+    <div class="controls" role="group" aria-label="Word being read">
+      <span class="label">Reading the word:</span>
+      <button class="btn" data-qword="0" aria-pressed="true">Thinking</button>
+      <button class="btn" data-qword="1" aria-pressed="false">Machines</button>
+    </div>
+    <div class="steps" id="steps" role="group" aria-label="Steps"></div>
+    <p class="step-text" id="step-text" aria-live="polite"></p>
+    <div class="table-scroll"><table class="calc" id="calc"></table></div>
+    <div class="controls" style="margin:18px 0 0">
+      <button class="btn quiet" id="step-back">Back</button>
+      <button class="btn" id="step-next">Next step</button>
+      <label class="toggle" style="margin-left:8px"><input type="checkbox" id="no-scale"> Skip the ÷8</label>
+    </div>
+    <div class="verdict" id="scale-note" hidden></div>
+    <p class="note">The scores 112 and 96 are the article's example numbers for "Thinking"; the ones for "Machines" are made up the same way. Values are drawn as 3 cells instead of 64.</p>
+  </div>
+  <div class="indent prose">
+    <p>In a real model all of this runs as one matrix calculation for every word at once: <code>Z = softmax(Q × K<sup>T</sup> ÷ √d<sub>k</sub>) × V</code>. Here <code>Q</code>, <code>K</code> and <code>V</code> hold every word's query, key and value, and <code>d<sub>k</sub></code> is 64, the length of a key.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="chapter" id="heads">
+  <div class="chapter-head"><span class="num">4</span><h2>Many heads are better than one</h2></div>
+  <div class="indent prose">
+    <p>One round of attention gives one way of looking. The paper runs eight in parallel, called <dfn>attention heads</dfn>. This is <dfn>multi-head attention</dfn>. Each head has its own <code>W<sup>Q</sup></code>, <code>W<sup>K</sup></code> and <code>W<sup>V</sup></code>, so each one learns to notice something different. The article calls these different <dfn>representation subspaces</dfn>.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Eight heads reading the same sentence</p>
+    <p class="bench-help">Each grid is one head. A row is the word being read, and the columns are the words it looks at. Darker means more attention, and each row adds up to 100%. Pick a head, then hover or tap a square.</p>
+    <div class="heads" id="head-picker" role="group" aria-label="Choose a head"></div>
+    <div class="heat-wrap">
+      <svg class="heat" id="heat" viewBox="0 0 520 520" role="group" aria-label="Attention weights for the chosen head"></svg>
+      <div class="heat-info" aria-live="polite">
+        <h4 id="head-name"></h4>
+        <p id="head-desc"></p>
+        <p id="cell-info" class="note"></p>
+      </div>
+    </div>
+    <p class="note">Hand-drawn patterns of the kinds researchers find in trained models. The first two match the hero at the top of the page.</p>
+    <h3>Eight answers become one</h3>
+    <p class="bench-help" style="margin-bottom:0">The next layer expects one vector per word, not eight. So the eight results (Z<sub>1</sub> to Z<sub>8</sub>) are joined end to end, which is called <dfn>concatenating</dfn>, then multiplied by one more learned matrix, <code>W<sup>O</sup></code>, to squeeze them back to one.</p>
+    <svg class="concat" id="concat" viewBox="0 0 900 120" role="img" aria-label="Eight head outputs concatenated, then multiplied by W O to give one output"></svg>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="chapter" id="residuals">
+  <div class="chapter-head"><span class="num">5</span><h2>Shortcuts and tidying up</h2></div>
+  <div class="indent prose">
+    <p>Two small details wrap every sub-layer, in the encoder and the decoder.</p>
+    <p>A <dfn>residual connection</dfn> adds the sub-layer's input back onto its output. It's a shortcut: the layer only has to learn what to change, and the original word is never lost on the way up the stack.</p>
+    <p><dfn>Layer normalization</dfn> then rescales each word's numbers into a steady range, so they don't drift too big or too small after many layers. The paper calls the pair "Add &amp; Norm".</p>
+  </div>
+  <svg class="flow" viewBox="0 0 680 190" role="img" aria-label="Input x goes through self-attention, x is added back, then layer normalization">
+    <rect x="10" y="100" width="90" height="50" rx="4" fill="#fff" stroke="#1C2320" stroke-width="2"/>
+    <text x="55" y="131" text-anchor="middle" font-weight="700">x</text>
+    <rect x="150" y="100" width="170" height="50" rx="4" fill="#D3EDE6" stroke="#0E7C66" stroke-width="2"/>
+    <text x="235" y="131" text-anchor="middle" font-weight="700">Self-attention</text>
+    <circle cx="380" cy="125" r="22" fill="#fff" stroke="#1C2320" stroke-width="2"/>
+    <text x="380" y="132" text-anchor="middle" font-size="22" font-weight="700">+</text>
+    <rect x="440" y="100" width="150" height="50" rx="4" fill="#fff" stroke="#1C2320" stroke-width="2"/>
+    <text x="515" y="131" text-anchor="middle" font-weight="700">Layer norm</text>
+    <path d="M100 125 H148 M320 125 H356 M402 125 H438 M590 125 H640" stroke="#1C2320" stroke-width="2" fill="none"/>
+    <path d="M632 119 l9 6 -9 6" stroke="#1C2320" stroke-width="2" fill="none"/>
+    <path d="M55 100 V40 H380 V102" stroke="#6A45D9" stroke-width="3" fill="none"/>
+    <path d="M374 94 l6 9 6 -9" stroke="#6A45D9" stroke-width="3" fill="none"/>
+    <text x="217" y="30" text-anchor="middle" fill="#6A45D9">residual: add x back</text>
+    <text x="515" y="176" text-anchor="middle" fill="#4B544F">Add &amp; Norm</text>
+  </svg>
+</section>
+
+<!-- 6 -->
+<section class="chapter" id="decoder">
+  <div class="chapter-head"><span class="num">6</span><h2>Writing the translation, one word at a time</h2></div>
+  <div class="indent prose">
+    <p>The encoder reads "je suis étudiant" once. Its final output becomes a set of <span class="c-k">keys</span> and <span class="c-v">values</span> that every decoder layer can consult. The decoder then writes English one word per step, feeding each new word back in as input for the next step. It stops when it writes a special end-of-sentence word, <code>&lt;eos&gt;</code>.</p>
+    <p>The decoder has two kinds of attention. <dfn>Masked self-attention</dfn> looks only at English words already written: future positions are hidden by setting their scores to −∞ before the softmax, so they get 0%. <dfn>Encoder-decoder attention</dfn> takes its <span class="c-q">queries</span> from the decoder and its <span class="c-k">keys</span> and <span class="c-v">values</span> from the encoder, so each step can look back at the French.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Step through the decoder</p>
+    <p class="bench-help">The model knows six English words, its <dfn>vocabulary</dfn>. At each step it scores all six, and the softmax turns the scores into probabilities.</p>
+    <div class="controls">
+      <button class="btn quiet" id="dec-back">Back</button>
+      <button class="btn" id="dec-next">Write the next word</button>
+      <button class="btn quiet" id="dec-reset">Start over</button>
+    </div>
+    <div class="tokens" id="dec-in"></div>
+    <div class="tokens" id="dec-out" style="margin-top:10px"></div>
+    <div class="dec-grid">
+      <div>
+        <h4 class="c-k">Encoder-decoder attention</h4>
+        <p class="sub">Which French word this step looks at</p>
+        <div class="hbars" id="dec-att"></div>
+      </div>
+      <div>
+        <h4 class="c-q">Linear, then softmax</h4>
+        <p class="sub">Probability of each word in the vocabulary</p>
+        <div class="hbars" id="dec-prob"></div>
+      </div>
+    </div>
+    <div class="verdict q" id="dec-verdict"></div>
+  </div>
+  <div class="indent prose">
+    <h3>From numbers back to a word</h3>
+    <p>The top decoder outputs a vector. A <dfn>linear layer</dfn> stretches it into one score per vocabulary word, a list called the <dfn>logits</dfn>. A real model knows tens of thousands of words, so the logits are that long. The <dfn>softmax</dfn> turns the scores into probabilities that add up to 100%.</p>
+    <p>Taking the top word every time is <dfn>greedy decoding</dfn>. <dfn>Beam search</dfn> instead keeps the best few unfinished translations (two, if the <dfn>beam size</dfn> is 2), extends each one, and keeps whichever turns out better overall.</p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="chapter" id="training">
+  <div class="chapter-head"><span class="num">7</span><h2>How it learns</h2></div>
+  <div class="indent prose">
+    <p>An untrained model starts with random weights, so its guesses are random. Training shows it a French sentence with the right English answer, measures how wrong its guess was, and nudges every weight a little to be less wrong. The nudging is <dfn>backpropagation</dfn>, and the measure of wrongness is the <dfn>loss function</dfn>.</p>
+    <p>The right answer is written as a <dfn>one-hot encoding</dfn>: a list as long as the vocabulary, with 100% on the correct word and 0% everywhere else.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Training on "merci" → "thanks"</p>
+    <p class="bench-help">Drag to train. Watch the model's guess move toward the target and the loss fall.</p>
+    <div class="slider-row">
+      <input type="range" id="train" min="0" max="100" value="0" aria-label="Training progress">
+      <span class="slider-val" id="train-val"></span>
+    </div>
+    <div class="dec-grid" style="margin-top:6px">
+      <div><h4>Target (one-hot)</h4><p class="sub">What the right answer looks like</p><div class="hbars" id="t-target"></div></div>
+      <div><h4>Model's guess</h4><p class="sub">Softmax output after this much training</p><div class="hbars" id="t-guess"></div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="t-p"></b><span>probability on "thanks"</span></div>
+      <div class="stat"><b id="t-loss"></b><span>loss (cross-entropy)</span></div>
+    </div>
+    <p class="note">Cross-entropy loss here is −log(probability of the right word). It's 0 for a perfect guess. Real training averages it over millions of sentences.</p>
+  </div>
+  <div class="indent prose">
+    <p>Even after training, every word keeps a little probability. That's the softmax at work, and it helps training: a wrong word with 1% can still be nudged.</p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="chapter" id="quiz-section">
+  <div class="chapter-head"><span class="num">8</span><h2>Check yourself</h2></div>
+  <div class="indent prose">
+    <p>Pick an answer to see why.</p>
+    <p class="score" id="score" aria-live="polite"></p>
+  </div>
+  <div class="quiz" id="quiz"></div>
+</section>
+
+<section class="chapter" id="recap">
+  <h2>A word's journey, start to finish</h2>
+  <div class="table-scroll">
+  <table class="recap">
+    <thead><tr><th scope="col">Step</th><th scope="col">What happens</th><th scope="col">Term</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>The word becomes 512 numbers.</td><td>Embedding</td></tr>
+      <tr><td>2</td><td>A position pattern is added, so word order counts.</td><td>Positional encoding</td></tr>
+      <tr><td>3</td><td>The word asks every other word how relevant it is, and blends in their information.</td><td>Self-attention (Q, K, V)</td></tr>
+      <tr><td>4</td><td>Eight heads do this differently; their results are joined and squeezed back with W<sup>O</sup>.</td><td>Multi-head attention</td></tr>
+      <tr><td>5</td><td>The input is added back and the numbers are rescaled.</td><td>Add &amp; Norm</td></tr>
+      <tr><td>6</td><td>Each word goes through the same small network on its own.</td><td>Feed-forward network</td></tr>
+      <tr><td>7</td><td>Steps 3 to 6 repeat in six stacked encoders.</td><td>Encoder stack</td></tr>
+      <tr><td>8</td><td>The decoder looks at what it has written so far, never ahead.</td><td>Masked self-attention</td></tr>
+      <tr><td>9</td><td>The decoder looks back at the encoder's understanding of the input.</td><td>Encoder-decoder attention</td></tr>
+      <tr><td>10</td><td>Scores for every vocabulary word become probabilities, and a word is picked.</td><td>Linear, logits, softmax</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="chapter" id="glossary">
+  <h2>Glossary</h2>
+  <div class="prose"><p>Every term from the article, in plain words.</p></div>
+  <label for="gfilter" class="bench-help" style="display:block;margin:0">Search the glossary</label>
+  <input class="filter" id="gfilter" type="search" placeholder="Try query, softmax or mask">
+  <dl class="glossary" id="gloss"></dl>
+  <p class="empty" id="gempty" hidden>No terms match. Try a shorter word.</p>
+</section>
+</main>
+
+<footer>
+  <p>Built to help you learn <a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">The Illustrated Transformer</a> by Jay Alammar (2018), which explains <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need</a> by Vaswani et al. (2017). The examples and numbers follow the article; the text and visuals here are new. The article is licensed <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>, and this guide is shared non-commercially under the same license.</p>
+  <p><a href="../">See all decoded papers</a></p>
+</footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

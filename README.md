@@ -6,6 +6,7 @@ Papers and essays I'm learning from, rebuilt as interactive guides that anyone c
 
 | Guide | Original | What you'll learn |
 |---|---|---|
+| [How a Transformer reads a sentence](https://notsoweedy.github.io/papers-decoded/transformer/) | [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/), Jay Alammar, 2018 (CC BY-NC-SA 4.0) | Self-attention, queries, keys and values, multi-head attention, positional encoding, masking, greedy decoding and beam search |
 | [Where does your GPU's time go?](https://notsoweedy.github.io/papers-decoded/brrr/) | [Making Deep Learning Go Brrrr From First Principles](https://horace.io/brrr_intro.html), Horace He, 2022 | Compute-bound vs memory-bound vs overhead-bound, operator fusion, compute intensity, CUDA Graphs |
 
 ## How it's built
@@ -18,6 +19,7 @@ brrr/             Making Deep Learning Go Brrrr
   index.html
   styles.css
   app.js
+transformer/      The Illustrated Transformer (same three files)
 .nojekyll         tells GitHub Pages to serve files as they are
 ```
 
