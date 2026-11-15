@@ -1,5 +1,12 @@
 # One-time publish: creates github.com/notsoweedy/papers-decoded, pushes this folder,
-# and turns on GitHub Pages. Safe to run again; it skips steps that are already done.
+# and turns on GitHub Pages. It then rebuilds the personal website and pushes its docs/
+# folder to notsoweedy.github.io, so the site's "papers/" link goes live.
+# Safe to run again; it skips steps that are already done.
+param(
+    [switch]$SkipWebsite,
+    [string]$WebsiteDir = "$env:USERPROFILE\personal-website",
+    [string]$Hugo = "$env:USERPROFILE\tools\hugo-0.169.0\hugo.exe"
+)
 $ErrorActionPreference = 'Continue'
 $Owner = 'notsoweedy'
 $Repo = 'papers-decoded'
@@ -62,3 +69,32 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host ''
 Write-Host "Published. The site will be live in about a minute at $SiteUrl"
 Write-Host "Repository: https://github.com/$Owner/$Repo"
+
+if ($SkipWebsite) { return }
+
+# Same as the README's manual upload: rebuild docs/ and copy it over the live repo's docs/.
+# Files are added or overwritten, never deleted.
+Write-Host ''
+Write-Host 'Updating notsoweedy.github.io with the new papers/ link...'
+if (-not (Test-Path $Hugo)) { throw "Hugo not found at $Hugo. Pass -Hugo <path to hugo.exe>, or run with -SkipWebsite." }
+& $Hugo --source $WebsiteDir --gc --minify --destination (Join-Path $WebsiteDir 'docs')
+if ($LASTEXITCODE -ne 0) { throw 'Website build failed.' }
+
+$tmp = Join-Path $env:TEMP "notsoweedy-site-$(Get-Random)"
+git clone --quiet --depth 1 "https://github.com/$Owner/$Owner.github.io.git" $tmp
+if ($LASTEXITCODE -ne 0) { throw 'Could not clone the website repository.' }
+try {
+    Copy-Item (Join-Path $WebsiteDir 'docs\*') (Join-Path $tmp 'docs') -Recurse -Force
+    git -C $tmp add docs
+    if (git -C $tmp status --porcelain) {
+        git -C $tmp -c user.name="$(git config user.name)" -c user.email="$(git config user.email)" commit --quiet -m 'Rebuild site: link papers-decoded'
+        git -C $tmp push --quiet
+        if ($LASTEXITCODE -ne 0) { throw 'Pushing the website failed.' }
+        Write-Host 'Website updated. https://notsoweedy.github.io/ will show the papers/ link in about a minute.'
+    } else {
+        Write-Host 'Website already up to date.'
+    }
+} finally {
+    Set-Location $PSScriptRoot
+    Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+}
