@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Papers, decoded | Vidhi Bansal</title>
+<meta name="description" content="Research papers and essays on systems for machine learning, rebuilt as interactive guides anyone can follow.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --floor: #ECEEE9; --panel: #F8F9F6; --ink: #1C2320; --ink-2: #4B544F; --line: #BCC3BC;
+    --compute: #2D55DB; --memory: #E39A14; --overhead: #B9327E;
+    --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--floor); color: var(--ink); font: 400 1.125rem/1.6 var(--body); }
+  a { color: var(--compute); text-underline-offset: 3px; }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 28px; }
+  header { padding: 20px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 16px; font-size: .98rem; }
+  header a { color: var(--ink-2); }
+  h1 { font: 800 clamp(2.6rem, 6vw, 4.2rem)/1 var(--display); letter-spacing: -0.025em; margin: 64px 0 20px; }
+  .lede { font-size: 1.2rem; color: var(--ink-2); max-width: 46ch; margin: 0 0 56px; }
+  .papers { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
+  .paper { border-bottom: 1px solid var(--line); }
+  .paper > a { display: grid; grid-template-columns: 1fr auto; gap: 8px 32px; padding: 28px 0; color: inherit; text-decoration: none; }
+  .paper h2 { font: 700 1.6rem/1.15 var(--display); letter-spacing: -0.01em; margin: 0; }
+  .paper > a:hover h2 { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+  .paper .by { grid-column: 1; color: var(--ink-2); margin: 0; font-size: 1rem; }
+  .paper .learn { grid-column: 1; margin: 6px 0 0; max-width: 60ch; }
+  .paper .terms { grid-column: 1; margin: 10px 0 0; color: var(--ink-2); font-size: .95rem; }
+  .paper .stripe { grid-column: 2; grid-row: 1 / span 4; align-self: center; display: flex; width: 120px; height: 14px; border-radius: 3px; overflow: hidden; }
+  .paper .stripe i { flex: 1; }
+  .next { color: var(--ink-2); padding: 28px 0; margin: 0; }
+  footer { margin-top: 80px; padding: 32px 0 56px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: .98rem; }
+  @media (max-width: 640px) {
+    h1 { margin-top: 40px; }
+    .paper > a { grid-template-columns: 1fr; }
+    .paper .stripe { grid-column: 1; grid-row: auto; width: 96px; margin-top: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span>Vidhi Bansal</span>
+    <a href="https://notsoweedy.github.io/">notsoweedy.github.io</a>
+  </header>
+
+  <main>
+    <h1>Papers, decoded</h1>
+    <p class="lede">Papers and essays I'm learning from, rebuilt as interactive guides. Each one explains the main idea and its vocabulary in plain words, with things to click and drag, so no background is needed.</p>
+
+    <ol class="papers" reversed>
+      <li class="paper">
+        <a href="brrr/">
+          <h2>Making Deep Learning Go Brrrr From First Principles</h2>
+          <p class="by">Horace He, 2022</p>
+          <p class="learn">Why your GPU is slow, and how to tell which of three things is to blame: doing math, moving data, or the software around it.</p>
+          <p class="terms">Compute-bound, memory-bound, overhead, operator fusion, compute intensity, CUDA Graphs</p>
+          <span class="stripe" aria-hidden="true"><i style="background:var(--compute)"></i><i style="background:var(--memory)"></i><i style="background:var(--overhead)"></i></span>
+        </a>
+      </li>
+    </ol>
+    <p class="next">More coming as I read them.</p>
+  </main>
+
+  <footer>
+    <p>Made by <a href="https://notsoweedy.github.io/">Vidhi Bansal</a> while learning systems for machine learning. Every guide links to the original work it explains; the ideas and numbers belong to their authors.</p>
+  </footer>
+</div>
+</body>
+</html>

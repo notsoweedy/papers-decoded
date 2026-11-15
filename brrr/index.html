@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where does your GPU's time go? A hands-on guide to "Making Deep Learning Go Brrrr"</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="brand" href="../">Papers, decoded</a>
+  <nav aria-label="Chapters">
+    <a href="#wrong-thing">Bottlenecks</a>
+    <a href="#compute">Compute</a>
+    <a href="#memory">Memory</a>
+    <a href="#tipping">Tipping point</a>
+    <a href="#overhead">Overhead</a>
+    <a href="#diagnose">Diagnose</a>
+    <a href="#glossary">Glossary</a>
+  </nav>
+</header>
+
+<main>
+<section class="hero" aria-labelledby="title">
+  <div>
+    <h1 id="title">Where does your GPU's time go?</h1>
+    <p class="lede">Every moment a deep learning program runs, the GPU is doing one of three things. Learn to spot which one is slowing you down, and you'll know what to fix.</p>
+    <p class="source">A hands-on companion to Horace He's essay <a href="https://horace.io/brrr_intro.html" target="_blank" rel="noopener">Making Deep Learning Go Brrrr From First Principles</a>.</p>
+  </div>
+
+  <svg class="scene" viewBox="0 0 720 330" role="img" aria-labelledby="scene-title">
+    <title id="scene-title">A factory (compute) gets materials by truck from a warehouse (memory) and instructions from an office (overhead)</title>
+    <!-- Office: overhead -->
+    <g class="part" data-part="overhead" tabindex="0" role="button" aria-label="Overhead: the office">
+      <rect class="outline" x="470" y="14" width="210" height="76" rx="4" fill="#F4DCEA" stroke="#B9327E" stroke-width="3"/>
+      <rect x="490" y="34" width="34" height="22" fill="#fff" stroke="#B9327E" stroke-width="2"/>
+      <rect x="536" y="34" width="34" height="22" fill="#fff" stroke="#B9327E" stroke-width="2"/>
+      <text x="586" y="44" font-size="17" font-weight="700" fill="#1C2320">Office</text>
+      <text x="586" y="63" font-size="13" fill="#4B544F">Python, PyTorch</text>
+      <text x="490" y="80" font-size="12" fill="#4B544F">decides what to do next</text>
+      <line x1="575" y1="92" x2="575" y2="150" stroke="#B9327E" stroke-width="3" stroke-dasharray="6 6"/>
+      <g id="paper"><rect x="566" y="100" width="18" height="22" fill="#fff" stroke="#B9327E" stroke-width="2"/><line x1="570" y1="107" x2="580" y2="107" stroke="#B9327E" stroke-width="1.5"/><line x1="570" y1="113" x2="580" y2="113" stroke="#B9327E" stroke-width="1.5"/></g>
+    </g>
+    <!-- Factory: compute -->
+    <g class="part" data-part="compute" tabindex="0" role="button" aria-label="Compute: the factory">
+      <path class="outline" d="M470 300 V180 l35 -26 v26 l35 -26 v26 l35 -26 v26 l35 -26 v26 l35 -26 V300 Z" fill="#DCE3FA" stroke="#2D55DB" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="644" y="128" width="16" height="44" fill="#2D55DB"/>
+      <text x="490" y="214" font-size="17" font-weight="700" fill="#1C2320">Factory</text>
+      <text x="490" y="233" font-size="13" fill="#4B544F">GPU compute units</text>
+      <rect x="600" y="248" width="66" height="40" fill="#fff" stroke="#2D55DB" stroke-width="2"/>
+      <text x="610" y="273" font-size="12" fill="#2D55DB" font-weight="700">SRAM</text>
+      <g id="gear" transform="translate(520 268)"><circle r="16" fill="none" stroke="#2D55DB" stroke-width="6" stroke-dasharray="6 4"/><circle r="5" fill="#2D55DB"/></g>
+    </g>
+    <!-- Warehouse + road: memory -->
+    <g class="part" data-part="memory" tabindex="0" role="button" aria-label="Memory bandwidth: the warehouse and trucks">
+      <path class="outline" d="M24 300 V176 L114 136 L204 176 V300 Z" fill="#F8E8C8" stroke="#E39A14" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="84" y="244" width="60" height="56" fill="#fff" stroke="#E39A14" stroke-width="2"/>
+      <text x="56" y="196" font-size="17" font-weight="700" fill="#1C2320">Warehouse</text>
+      <text x="44" y="216" font-size="13" fill="#4B544F">GPU memory (DRAM)</text>
+      <rect x="204" y="236" width="266" height="52" fill="#D9DDD6"/>
+      <line x1="204" y1="262" x2="470" y2="262" stroke="#fff" stroke-width="2" stroke-dasharray="10 8"/>
+      <text x="262" y="320" font-size="13" fill="#4B544F">trucks = memory bandwidth</text>
+      <g id="trucks"></g>
+    </g>
+  </svg>
+</section>
+
+<div class="timebar" role="group" aria-label="Choose one of the three kinds of time">
+  <button class="t-compute" data-part="compute" aria-pressed="false">Compute<span>doing the math</span></button>
+  <button class="t-memory" data-part="memory" aria-pressed="false">Memory<span>moving the numbers</span></button>
+  <button class="t-overhead" data-part="overhead" aria-pressed="false">Overhead<span>everything else</span></button>
+</div>
+<div class="explain" id="explain" aria-live="polite">
+  <p>Click a part of the picture, or one of the three colors, to see what it means. These three colors mean the same thing everywhere on this page.</p>
+</div>
+
+<!-- 1 -->
+<section class="chapter" id="wrong-thing">
+  <div class="chapter-head"><span class="num">1</span><h2>Speeding up the wrong thing does nothing</h2></div>
+  <div class="indent prose">
+    <p>People often speed up deep learning code with a grab bag of tips from the internet. The essay's point is simpler: first find out which of the three kinds of time dominates. That alone tells you which fixes are a waste of effort.</p>
+    <p>If the factory is waiting on trucks, a bigger factory won't help. If the factory is already flat out, faster trucks won't help. Try it.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Factory and trucks</p>
+    <p class="bench-help">The factory can only build as fast as materials arrive. Double one side and watch what the output does.</p>
+    <div class="controls">
+      <button class="btn" id="dbl-factory">Double the factory</button>
+      <button class="btn" id="dbl-trucks">Double the trucks</button>
+      <button class="btn quiet" id="reset-ft">Reset</button>
+    </div>
+    <div class="hbars">
+      <div class="hbar"><span class="name">Factory could build</span><div class="track"><div class="fill compute" id="ft-f"></div></div><span class="val" id="ft-fv"></span></div>
+      <div class="hbar"><span class="name">Trucks can deliver</span><div class="track"><div class="fill memory" id="ft-t"></div></div><span class="val" id="ft-tv"></span></div>
+      <div class="hbar"><span class="name">Actual output</span><div class="track"><div class="fill ink" id="ft-o"></div></div><span class="val" id="ft-ov"></span></div>
+    </div>
+    <div class="verdict" id="ft-verdict"></div>
+  </div>
+  <div class="indent prose">
+    <p>This gets harder every year. Chip makers keep making the math faster much more quickly than they make memory faster, so the factory keeps growing faster than the trucks can keep up.</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="chapter" id="compute">
+  <div class="chapter-head"><span class="num">2</span><h2 class="c-compute">Compute: the factory</h2></div>
+  <div class="indent prose">
+    <p>A <dfn>FLOP</dfn> is one floating-point operation: a single add or multiply on decimal numbers. <dfn>FLOPS</dfn> is how many of those a chip does per second. An NVIDIA A100 GPU is advertised at 312 trillion per second, or 312 teraflops.</p>
+    <p>Ideally you want to be <dfn>compute-bound</dfn>: spending your time on math, the thing you paid for. Math is also the one cost you can't remove without changing what your model calculates. Memory traffic and overhead can be cut.</p>
+    <p>There's a catch. Most of that speed comes from <dfn>Tensor Cores</dfn>, circuits built only for <dfn>matrix multiplication</dfn> (matmul): multiplying big grids of numbers, the core of every neural network.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">A100 top speed, by kind of math</p>
+    <p class="bench-help">Anything that isn't a matrix multiply runs about 16 times slower.</p>
+    <div class="hbars">
+      <div class="hbar"><span class="name">Matrix multiply (Tensor Cores)</span><div class="track"><div class="fill compute" style="width:100%"></div></div><span class="val">312 TF</span></div>
+      <div class="hbar"><span class="name">Everything else</span><div class="track"><div class="fill compute" style="width:6.25%"></div></div><span class="val">19.5 TF</span></div>
+    </div>
+  </div>
+  <div class="indent prose">
+    <p>That seems fine, since almost all of a model's math is matmuls. But look at what happens to the time.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">BERT, a language model: math versus time</p>
+    <p class="bench-help">Switch between the share of math each kind of operation does and the share of time it takes.</p>
+    <div class="controls" role="group" aria-label="Show share of">
+      <button class="btn" id="bert-flops" aria-pressed="true">Share of the math</button>
+      <button class="btn" id="bert-time" aria-pressed="false">Share of the time</button>
+    </div>
+    <div class="hbars" id="bert"></div>
+    <div class="verdict memory" id="bert-note"></div>
+    <p class="bench-help" style="margin:14px 0 0">Data from Ivanov et al., <a href="https://arxiv.org/abs/2007.00072" target="_blank" rel="noopener">Data Movement Is All You Need</a> (2020), as quoted in the essay.</p>
+  </div>
+  <div class="indent prose">
+    <p>Normalization and <dfn>pointwise operations</dfn> (operations that change each number on its own, like an activation function) do almost no math but take 39% of the time. They get 250 to 700 times less work done per second than matmuls. The factory isn't the problem. The trucks are.</p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="chapter" id="memory">
+  <div class="chapter-head"><span class="num">3</span><h2 class="c-memory">Memory: the warehouse and the trucks</h2></div>
+  <div class="indent prose">
+    <p>The factory has a tiny, very fast storeroom, called <dfn>SRAM</dfn>. Everything else lives in a big, slower warehouse, called <dfn>DRAM</dfn> or global memory. DRAM is the memory <code>nvidia-smi</code> shows, and the one that runs out when you see "CUDA out of memory".</p>
+    <p>The rate at which data can move between them is the <dfn>memory bandwidth</dfn>. Every GPU <dfn>kernel</dfn>, the function the GPU runs for one operation, ships its input in from the warehouse and its result back out.</p>
+    <p>For something like <code>x.cos()</code>, the GPU does one tiny calculation per number but has to move every number twice. Nearly all the time goes to shipping. That's a <dfn>memory-bound</dfn> operation.</p>
+    <p>The fix is <dfn>operator fusion</dfn>: do several operations in one trip, keeping the data in the factory between them. The essay calls it the most important optimization in deep learning compilers.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Fusion lab</p>
+    <p class="bench-help">Build a chain of operations on 100 million numbers, then compare running them one at a time with running them fused. Times are estimates for an A100.</p>
+    <div class="controls" id="op-buttons" aria-label="Add an operation"></div>
+    <div class="chain" id="chain" aria-live="polite"></div>
+    <div class="lanes">
+      <div class="lane-row"><div class="name">One at a time<span>PyTorch eager mode</span></div><div class="track-line" id="lane-eager"></div></div>
+      <div class="lane-row"><div class="name">Fused<span>one kernel, one round trip</span></div><div class="track-line" id="lane-fused"></div></div>
+    </div>
+    <div class="legend"><span><i style="background:var(--memory)"></i>truck in: read from memory</span><span><i style="background:repeating-linear-gradient(135deg,var(--memory) 0 4px,#EDB24A 4px 7px)"></i>truck out: write to memory</span><span><i style="background:var(--compute)"></i>math</span></div>
+    <div class="stats">
+      <div class="stat"><b id="fz-trips"></b><span>memory trips, one at a time → fused</span></div>
+      <div class="stat"><b id="fz-eager"></b><span>time, one at a time</span></div>
+      <div class="stat"><b id="fz-fused"></b><span>time, fused</span></div>
+      <div class="stat"><b id="fz-speed"></b><span>faster when fused</span></div>
+    </div>
+    <div class="code-pair">
+      <figure><figcaption>One at a time</figcaption><pre id="code-eager"></pre></figure>
+      <figure><figcaption>Fused</figcaption><pre id="code-fused"></pre></figure>
+    </div>
+  </div>
+  <div class="indent prose">
+    <h3>Things to notice</h3>
+    <p>Adding more operations to a fused chain barely changes its time. That's why a complex activation like GELU costs about the same as a simple one like ReLU: the math is nearly free, and the trip is the cost.</p>
+    <p>This also explains <dfn>rematerialization</dfn>, or activation checkpointing. Recomputing a value can be cheaper than storing it and reading it back later, so you can save memory and time at once.</p>
+    <p>Fusion isn't free. PyTorch's default <dfn>eager mode</dfn> runs each operation as soon as Python reaches it, so it can't know what comes next. A compiler (NVFuser and XLA are the essay's examples) has to see the whole chain and generate GPU code for it. To write fused kernels yourself, the essay suggests <a href="https://openai.com/research/triton" target="_blank" rel="noopener">Triton</a>.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="chapter" id="tipping">
+  <div class="chapter-head"><span class="num">4</span><h2>Finding the tipping point</h2></div>
+  <div class="indent prose">
+    <p>How much math is enough to keep the factory busy? The essay runs an experiment: multiply every number by 2, <code>repeat</code> times in a row, in one fused kernel. The data moves once no matter what, so raising <code>repeat</code> only adds math.</p>
+    <p>The amount of math you do for each byte you move is called <dfn>compute intensity</dfn>. Raise it and you slide from memory-bound to compute-bound.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Compute intensity slider</p>
+    <p class="bench-help">Choose how many multiplications to do on each number before writing it back.</p>
+    <div class="slider-row">
+      <input type="range" id="rep" min="0" max="10" step="0.25" value="0" aria-label="Multiplications per number">
+      <span class="slider-val" id="rep-val"></span>
+    </div>
+    <pre id="rep-code"></pre>
+    <svg class="chart" id="roof" viewBox="0 0 640 300" role="img" aria-label="Chart of achieved teraflops against multiplications per number"></svg>
+    <div class="gauges">
+      <div class="gauge"><div class="lbl"><span class="c-memory"><b>Trucks busy</b></span><span id="g-mem"></span></div><div class="track"><div class="fill memory" id="g-mem-f"></div></div></div>
+      <div class="gauge"><div class="lbl"><span class="c-compute"><b>Factory busy</b></span><span id="g-cmp"></span></div><div class="track"><div class="fill compute" id="g-cmp-f"></div></div></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="r-time"></b><span>runtime for 100 million numbers</span></div>
+      <div class="stat"><b id="r-tf"></b><span>math done, out of 9.75 TFLOPS peak</span></div>
+      <div class="stat"><b id="r-bw"></b><span>memory used, out of 1.5 TB/s</span></div>
+    </div>
+    <div class="verdict" id="r-verdict"></div>
+    <p class="bench-help" style="margin:14px 0 0">A simplified model of an A100 using 32-bit numbers. This kind of math isn't a matmul, so the peak is 9.75 TFLOPS rather than 312. The essay measured the tipping point between 32 and 64 multiplications; real hardware curves are a little smoother.</p>
+  </div>
+  <div class="indent prose">
+    <p>The surprise: until you do about 50 operations per number, adding more math costs <em>no extra time</em>. The factory was sitting idle waiting for trucks anyway.</p>
+    <p>For a whole model, a good check is <dfn>achieved FLOPS as a share of peak</dfn>. If you're getting 80% of peak, you're at least 80% compute-bound, which is very good.</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="chapter" id="overhead">
+  <div class="chapter-head"><span class="num">5</span><h2 class="c-overhead">Overhead: the office paperwork</h2></div>
+  <div class="indent prose">
+    <p><dfn>Overhead</dfn> is everything that is neither math nor moving tensors: the Python interpreter running your code, PyTorch working out which kernel to call (called <dfn>dispatch</dfn>), and launching that kernel on the GPU.</p>
+    <p>The problem is that GPUs are absurdly fast and Python is not.</p>
+  </div>
+  <div class="bigfacts">
+    <div><b>32 million</b><span>additions per second in plain Python</span></div>
+    <div><b>280 thousand</b><span>tiny PyTorch operations per second</span></div>
+    <div><b>9.75 million</b><span>FLOPs an A100 could do in the time Python does one</span></div>
+  </div>
+  <div class="indent prose">
+    <p>PyTorch is still usable because it runs <dfn>asynchronously</dfn>. The CPU hands the GPU a job and moves on to prepare the next one without waiting. If each GPU job is big, the CPU runs ahead, a queue builds up, and the overhead is hidden. If each job is tiny, the GPU finishes instantly and sits waiting for the office.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">CPU and GPU timeline</p>
+    <p class="bench-help">Ten operations in a row. Each takes the CPU about 10 µs of paperwork to launch. Drag the slider to change how long each one keeps the GPU busy.</p>
+    <div class="slider-row">
+      <input type="range" id="ksize" min="0" max="100" step="1" value="12" aria-label="GPU time per operation">
+      <span class="slider-val" id="ksize-val"></span>
+    </div>
+    <label class="toggle"><input type="checkbox" id="graphs"> Record the ten launches as one CUDA Graph</label>
+    <svg class="timeline" id="tl" viewBox="0 0 720 150" role="img" aria-label="Timeline of CPU and GPU activity"></svg>
+    <div class="legend"><span><i style="background:var(--overhead)"></i>CPU paperwork, one block per launch</span><span><i style="background:var(--compute)"></i>GPU running a kernel</span><span><i style="background:var(--idle)"></i>GPU waiting</span></div>
+    <div class="stats">
+      <div class="stat"><b id="o-util"></b><span>GPU-Util: time a kernel is running</span></div>
+      <div class="stat"><b id="o-total"></b><span>total time</span></div>
+      <div class="stat"><b id="o-double"></b><span>slower if you double the work</span></div>
+    </div>
+    <div class="verdict" id="o-verdict"></div>
+  </div>
+  <div class="indent prose">
+    <h3>How to tell you're overhead-bound</h3>
+    <p>Overhead doesn't grow when your data grows, but compute and memory do. So double your batch size. If the runtime grows only about 10% instead of doubling, you're overhead-bound. The "double the work" number above is this test.</p>
+    <p>You can also use a <dfn>profiler</dfn>: gaps on the GPU row mean the GPU is waiting on the CPU. The <dfn>GPU-Util</dfn> number in <code>nvidia-smi</code> measures roughly the same thing.</p>
+    <h3>Fixes</h3>
+    <p>Overhead is the price of flexibility: PyTorch is ready for something different at every step. If you don't need that, record the steps once and replay them. That's called <dfn>tracing</dfn>, as in <code>jit.trace</code>, FX or <code>jax.jit</code>. One level lower, <dfn>CUDA Graphs</dfn> record a whole sequence of kernel launches and replay them in one go; try the checkbox. The essay ends hopeful about a real JIT compiler called TorchDynamo, which later became the engine behind <code>torch.compile</code>.</p>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="chapter" id="diagnose">
+  <div class="chapter-head"><span class="num">6</span><h2>Diagnose it yourself</h2></div>
+  <div class="indent prose">
+    <p>Each situation below has one main bottleneck. Pick it and see why.</p>
+    <p class="score" id="score" aria-live="polite"></p>
+  </div>
+  <div class="quiz" id="quiz"></div>
+</section>
+
+<section class="chapter" id="cheatsheet">
+  <h2>Cheat sheet</h2>
+  <div class="prose"><p>The essay's conclusion fits in one table: find the bottleneck, then choose the fix.</p></div>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th scope="col">If you're</th><th scope="col">You'll notice</th><th scope="col">Try</th><th scope="col">Won't help</th></tr></thead>
+    <tbody>
+      <tr><td><span class="sw" style="background:var(--overhead)"></span>Overhead-bound</td><td>Doubling the batch barely changes runtime. Gaps between GPU kernels. Low GPU-Util.</td><td>Tracing, CUDA Graphs, a real JIT compiler, operator fusion, moving off Python</td><td>A faster GPU</td></tr>
+      <tr><td><span class="sw" style="background:var(--memory)"></span>Memory-bound</td><td>Lots of pointwise or normalization ops. Low FLOPS but the memory is busy.</td><td>Operator fusion</td><td>More FLOPS, rewriting in C++</td></tr>
+      <tr><td><span class="sw" style="background:var(--compute)"></span>Compute-bound</td><td>Big matrix multiplies. Achieved FLOPS close to peak.</td><td>Use Tensor Cores (for example lower precision), or, as the essay puts it, give NVIDIA more money</td><td>Cutting overhead or memory traffic</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="chapter" id="glossary">
+  <h2>Glossary</h2>
+  <div class="prose"><p>Every term from the essay, in plain words.</p></div>
+  <label for="gfilter" class="bench-help" style="display:block;margin:0">Search the glossary</label>
+  <input class="filter" id="gfilter" type="search" placeholder="Try fusion, SRAM or kernel">
+  <dl class="glossary" id="gloss"></dl>
+  <p class="empty" id="gempty" hidden>No terms match. Try a shorter word.</p>
+</section>
+</main>
+
+<footer>
+  <p>Built to help you learn <a href="https://horace.io/brrr_intro.html" target="_blank" rel="noopener">Making Deep Learning Go Brrrr From First Principles</a> by Horace He (2022). The factory picture, the experiments and all numbers come from that essay. The interactive models are simplified to make the ideas visible.</p>
+  <p><a href="../">See all decoded papers</a></p>
+</footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
