@@ -1,6 +1,6 @@
 # One-time publish: creates github.com/notsoweedy/papers-decoded, pushes this folder,
 # and turns on GitHub Pages. It then rebuilds the personal website and pushes its docs/
-# folder to notsoweedy.github.io, so the site's "papers/" link goes live.
+# folder to notsoweedy.github.io.
 # Safe to run again; it skips steps that are already done.
 param(
     [switch]$SkipWebsite,
@@ -75,7 +75,7 @@ if ($SkipWebsite) { return }
 # Same as the README's manual upload: rebuild docs/ and copy it over the live repo's docs/.
 # Files are added or overwritten, never deleted.
 Write-Host ''
-Write-Host 'Updating notsoweedy.github.io with the new papers/ link...'
+Write-Host 'Updating the website at notsoweedy.github.io...'
 if (-not (Test-Path $Hugo)) { throw "Hugo not found at $Hugo. Pass -Hugo <path to hugo.exe>, or run with -SkipWebsite." }
 & $Hugo --source $WebsiteDir --gc --minify --destination (Join-Path $WebsiteDir 'docs')
 if ($LASTEXITCODE -ne 0) { throw 'Website build failed.' }
@@ -87,10 +87,10 @@ try {
     Copy-Item (Join-Path $WebsiteDir 'docs\*') (Join-Path $tmp 'docs') -Recurse -Force
     git -C $tmp add docs
     if (git -C $tmp status --porcelain) {
-        git -C $tmp -c user.name="$(git config user.name)" -c user.email="$(git config user.email)" commit --quiet -m 'Rebuild site: link papers-decoded'
+        git -C $tmp -c user.name="$(git config user.name)" -c user.email="$(git config user.email)" commit --quiet -m 'Rebuild site'
         git -C $tmp push --quiet
         if ($LASTEXITCODE -ne 0) { throw 'Pushing the website failed.' }
-        Write-Host 'Website updated. https://notsoweedy.github.io/ will show the papers/ link in about a minute.'
+        Write-Host 'Website updated. Changes show at https://notsoweedy.github.io/ in about a minute.'
     } else {
         Write-Host 'Website already up to date.'
     }
