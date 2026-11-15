@@ -20,6 +20,7 @@ brrr/             Making Deep Learning Go Brrrr
   styles.css
   app.js
 transformer/      The Illustrated Transformer (same three files)
+analogies/        Seen in real life: everyday scenes paired with ideas from the guides
 .nojekyll         tells GitHub Pages to serve files as they are
 ```
 

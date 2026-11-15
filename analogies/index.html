@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seen in real life: GPU and Transformer ideas hiding in an ordinary day</title>
+<meta name="description" content="Everyday analogies for the ideas in Making Deep Learning Go Brrrr and The Illustrated Transformer: the kitchen, the market, wedding planning, family gatherings and work.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="brand" href="../">Papers, decoded</a>
+  <nav aria-label="Places">
+    <a href="#kitchen">Kitchen</a>
+    <a href="#home">Home</a>
+    <a href="#market">Market</a>
+    <a href="#wedding">Wedding</a>
+    <a href="#family">Family</a>
+    <a href="#work">Work</a>
+  </nav>
+</header>
+
+<main>
+<section class="hero" aria-labelledby="title">
+  <h1 id="title">Seen in real life</h1>
+  <p class="lede">Every idea in the two papers I've decoded has a twin in an ordinary day: in the kitchen, at the market, in wedding planning, around family. Once you've spotted the twin, the idea is hard to forget.</p>
+  <p class="lede">Each pair says why the two match, and where the match breaks. Knowing where an analogy stops is how you know you understand the real thing.</p>
+  <ul class="key" aria-label="Colour key">
+    <li><i style="background:var(--life)"></i>what you see in your day</li>
+    <li><i style="background:var(--brrr)"></i>from <a href="../brrr/">Making Deep Learning Go Brrrr</a></li>
+    <li><i style="background:var(--tf)"></i>from <a href="../transformer/">The Illustrated Transformer</a></li>
+  </ul>
+  <ul class="places" aria-label="Jump to a place">
+    <li><a href="#kitchen">In the kitchen</a></li>
+    <li><a href="#home">Around the house</a></li>
+    <li><a href="#market">Errands and the market</a></li>
+    <li><a href="#wedding">Planning the wedding</a></li>
+    <li><a href="#family">Family gatherings</a></li>
+    <li><a href="#work">At work</a></li>
+  </ul>
+</section>
+
+<section class="place" id="kitchen" aria-labelledby="kitchen-h">
+  <h2 id="kitchen-h">In the kitchen</h2>
+  <p>A kitchen is a small factory: there's the cooking, the fetching, and the coordinating.</p>
+
+  <article class="pair" id="caterer">
+    <p class="scene">A caterer's day is cooking, fetching supplies from the storeroom, and phone calls about the order.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#wrong-thing">The three kinds of time</a></p>
+      <p>A GPU program's time goes to the same three things: compute (doing the math), memory bandwidth (moving data to where the math happens) and overhead (everything else, like Python deciding what to run next).</p>
+      <p class="breaks"><b>Where it breaks:</b> one cook usually does all three in turn. On a GPU, different parts of the hardware and software handle each one, and they can overlap.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="chai">
+    <p class="scene">Chai for two takes about as long as chai for one. Chai for twenty finally takes longer.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#overhead">Overhead-bound (the double-the-batch test)</a></p>
+      <p>Heating the pan and waiting for the boil are fixed costs that don't grow with the number of cups. If you double a model's batch size and it gets only about 10% slower, it's overhead-bound in the same way.</p>
+      <p class="breaks"><b>Where it breaks:</b> the fixed cost on a GPU isn't physics like boiling water. It's software: Python, PyTorch working out which kernel to call, and launching it.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="tandoor">
+    <p class="scene">The tandoor turns out so many rotis a minute, however fast the waiters are.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#compute">FLOPS and peak compute</a></p>
+      <p>FLOPS is the kitchen's speed: floating-point operations per second. An A100 tops out around 312 trillion on matrix math. That's a ceiling, not a promise: you only reach it if nothing else holds you up.</p>
+      <p class="breaks"><b>Where it breaks:</b> a roti is a whole product. A FLOP is one tiny add or multiply, and a model needs trillions of them.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="vegetables">
+    <p class="scene">Everyone is waiting for the vegetables to arrive. Hiring a second cook changes nothing.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#wrong-thing">Speed up the bottleneck, not something else</a></p>
+      <p>The essay's main lesson. If the trucks are the problem, a bigger factory doesn't help; if the factory is maxed out, faster trucks don't help. First find out which kind of time dominates, then fix that.</p>
+      <p class="breaks"><b>Where it breaks:</b> in a kitchen you can see who's waiting. On a GPU you need a profiler, or a calculation, to find out.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="recipe">
+    <p class="scene">You keep Mom's recipe and add your own tweaks on top, then taste and adjust the salt so every batch comes out the same.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#residuals">Residual connection and layer norm</a></p>
+      <p>A residual connection adds a layer's input back onto its output, so the original is never lost and the layer only learns the changes. Layer normalization rescales the numbers into a steady range after each step.</p>
+      <p class="breaks"><b>Where it breaks:</b> you decide your tweaks. A layer learns its changes from data, and there's a residual around every sub-layer of every layer, not just one.</p>
+    </div>
+  </article>
+</section>
+
+<section class="place" id="home" aria-labelledby="home-h">
+  <h2 id="home-h">Around the house</h2>
+  <p>Where things are kept decides how long everything takes.</p>
+
+  <article class="pair" id="handbag">
+    <p class="scene">Your handbag is quick to reach but tiny. The trunk holds everything, but every trip to it costs time.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#memory">SRAM and DRAM</a></p>
+      <p>SRAM (shared memory) is the small, fast memory right next to the GPU's compute units. DRAM (global memory) is big and slower. It's the memory <code>nvidia-smi</code> shows and the one that runs out in "CUDA out of memory".</p>
+      <p class="breaks"><b>Where it breaks:</b> you choose what goes in your handbag. On a GPU, the programmer or the compiler has to plan exactly what sits in SRAM and when.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="ironing">
+    <p class="scene">Ironing one shirt at a time, walking to the cupboard and back for each. The ironing is quick; the walking is the job.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#memory">Memory-bound</a></p>
+      <p>Operations like <code>x.cos()</code> do one tiny calculation per number but must read every number from DRAM and write it back. Moving the data takes far longer than the math, so the compute sits idle.</p>
+      <p class="breaks"><b>Where it breaks:</b> you can carry only a few shirts. A GPU moves about 1.5 terabytes a second, but its math is so much faster that it still waits.</p>
+    </div>
+  </article>
+</section>
+
+<section class="place" id="market" aria-labelledby="market-h">
+  <h2 id="market-h">Errands and the market</h2>
+  <p>Trips are expensive. What you do per trip is what counts.</p>
+
+  <article class="pair" id="market-run">
+    <p class="scene">One market run with the full list (vegetables, flowers, sweets) instead of three separate trips.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#memory">Operator fusion</a></p>
+      <p>Instead of reading data from memory, doing one operation and writing it back, over and over, a fused kernel does several operations while the data stays in fast memory. <code>x.cos().cos()</code> fused needs 2 memory trips instead of 4.</p>
+      <p class="breaks"><b>Where it breaks:</b> you can fuse errands whenever you like. A GPU can only fuse what it can see ahead of time, which is why fusion needs a compiler rather than plain eager PyTorch.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="tailor">
+    <p class="scene">Since you're going to the tailor anyway, three more alterations cost almost nothing extra. The trip was the cost.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#tipping">Compute intensity</a></p>
+      <p>Compute intensity is how much math you do for each byte you move. Below the tipping point, extra math is free because you're waiting on memory anyway. On an A100 that's around 50 operations per number.</p>
+      <p class="breaks"><b>Where it breaks:</b> pile on enough alterations and the tailor becomes the bottleneck. On a GPU that's exactly what compute-bound means.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="billing">
+    <p class="scene">At the billing counter, scanning takes seconds, but each customer takes ages to find a card and pay.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#overhead">Kernel launch overhead</a></p>
+      <p>Every GPU operation has a fixed cost to start it (Python, dispatch, the launch), whatever its size. With lots of tiny operations, those starting costs dominate and the fast part, the GPU itself, sits idle.</p>
+      <p class="breaks"><b>Where it breaks:</b> a slow customer is a person. Launch overhead is the same few microseconds every time, which makes it easy to measure and predictable to remove.</p>
+    </div>
+  </article>
+</section>
+
+<section class="place" id="wedding" aria-labelledby="wedding-h">
+  <h2 id="wedding-h">Planning the wedding</h2>
+  <p>A wedding is a big, parallel, deadline-driven system. Nearly every idea shows up somewhere.</p>
+
+  <article class="pair" id="mehendi">
+    <p class="scene">The mehendi artist is astonishingly fast at mehendi and ordinary at everything else, so you give her only mehendi.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#compute">Tensor Cores</a></p>
+      <p>Tensor Cores are circuits built only for matrix multiplication: 312 TFLOPS on an A100, against 19.5 for everything else. Luckily, matrix multiplication is 99.8% of a model's math.</p>
+      <p class="breaks"><b>Where it breaks:</b> the other 0.2% of the math still takes about 40% of the time. It isn't slow because of the math; it's slow because of the memory trips.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="vendors">
+    <p class="scene">Calling each vendor separately to tell them the same thing. The calls take longer than the work they set off.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#overhead">Overhead</a></p>
+      <p>Overhead is everything that is neither math nor moving data. GPUs are so fast that in the time plain Python does one addition, an A100 could do almost 10 million operations.</p>
+      <p class="breaks"><b>Where it breaks:</b> vendor calls sometimes add value. GPU overhead never does; it's pure waiting.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="broadcast">
+    <p class="scene">A WhatsApp broadcast list: write the invitation once and send it to everyone, instead of typing it out for each person.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#overhead">Tracing and CUDA Graphs</a></p>
+      <p>Tracing records a sequence of operations once and replays it, skipping Python's step-by-step decisions. A CUDA Graph replays a whole series of GPU launches in one go.</p>
+      <p class="breaks"><b>Where it breaks:</b> a broadcast can't be personalised per guest. A recorded graph is similar: you give up flexibility, so if a step needs to change on the fly, you have to re-record it.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="planner">
+    <p class="scene">The wedding planner lines up the next three tasks while the decorators are still working. If each task takes two minutes, the decorators stand around waiting for her.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#overhead">Asynchronous execution: the CPU running ahead</a></p>
+      <p>PyTorch queues work for the GPU and moves on without waiting. With big operations, the CPU stays ahead and its overhead is hidden. With tiny ones, the GPU finishes instantly and waits; you'd see low GPU-Util.</p>
+      <p class="breaks"><b>Where it breaks:</b> a planner can hand over several tasks at once. Without tricks like CUDA Graphs, the CPU launches GPU work one operation at a time.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="guest-list">
+    <p class="scene">Describing each guest with a few numbers (how close to the family, age group, food preference) turns the guest list into a table you can sort.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#numbers">Embedding</a></p>
+      <p>Before a model can work with a word, it turns it into a list of numbers, a vector. In the paper each word becomes 512 numbers, and similar words end up with similar numbers.</p>
+      <p class="breaks"><b>Where it breaks:</b> you choose what your three numbers mean. A model learns its 512 numbers in training, and no single one has a neat label.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="seating">
+    <p class="scene">Finding your seat at the reception: you look for your name, scan the name cards on the tables, and the matching card gives you your seat and dinner.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#attention">Query, key and value</a></p>
+      <p>The query is what a word is looking for. The key is the label each word shows. The value is what a word hands over once it matches. Scores come from comparing the query with every key.</p>
+      <p class="breaks"><b>Where it breaks:</b> you sit at one seat. Attention blends a little of every value, weighted by how well each key matched.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="rituals">
+    <p class="scene">The same rituals in a different order mean something else. The order is part of the meaning.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#numbers">Positional encoding</a></p>
+      <p>Self-attention on its own has no sense of order, so "dog bites man" and "man bites dog" would look the same. The Transformer adds a pattern of sine and cosine waves to each word to mark its position.</p>
+      <p class="breaks"><b>Where it breaks:</b> you know the order of rituals by heart. The model gets its order as numbers added to every word, and it has to learn to use them.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="lehenga">
+    <p class="scene">Buying the first lehenga you like, or shortlisting two and deciding once you've seen the matching jewellery.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#decoder">Greedy decoding and beam search</a></p>
+      <p>Greedy decoding picks the single most likely next word every time. Beam search keeps the best few unfinished sentences (two, with a beam size of 2), extends each, and keeps whichever turns out better overall.</p>
+      <p class="breaks"><b>Where it breaks:</b> you'll pick one lehenga. Beam search repeats the shortlist at every word of the sentence.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="speech">
+    <p class="scene">Writing a wedding speech line by line: each line builds on what you've already written, not on lines you haven't written yet.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#decoder">Masking in the decoder</a></p>
+      <p>While writing its output, the decoder may only look at words it has already produced. Future positions are set to −∞ before the softmax, so they get 0% attention and the model can't peek at the answer during training.</p>
+      <p class="breaks"><b>Where it breaks:</b> you can go back and edit your speech. The decoder never revises a word once it's written.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="rsvp">
+    <p class="scene">The RSVP card: tick exactly one meal (veg, non-veg or Jain) and leave the others blank.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#training">One-hot encoding</a></p>
+      <p>During training, the right answer is written as a list as long as the vocabulary, with 1 for the correct word and 0 for every other. The model's guess is compared with it.</p>
+      <p class="breaks"><b>Where it breaks:</b> the RSVP has three boxes. A real vocabulary has tens of thousands, still with exactly one ticked.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="sangeet">
+    <p class="scene">Sangeet practice: the choreographer shows how far off each step was, and you adjust a little at every rehearsal.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#training">Loss and backpropagation</a></p>
+      <p>The loss measures how far the model's guess was from the right answer. Backpropagation works out how much each weight contributed, so every weight can be nudged to be a little less wrong. Then repeat, millions of times.</p>
+      <p class="breaks"><b>Where it breaks:</b> you get notes on a few steps. Backpropagation adjusts every one of millions of weights after each example.</p>
+    </div>
+  </article>
+</section>
+
+<section class="place" id="family" aria-labelledby="family-h">
+  <h2 id="family-h">Family gatherings</h2>
+  <p>A room full of relatives is the best attention demo there is.</p>
+
+  <article class="pair" id="aunt">
+    <p class="scene">An aunt says "she's arriving tomorrow", and you know exactly who she means from the conversation around it.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/">Self-attention</a></p>
+      <p>While reading a word like "it", the model scores every other word in the sentence and blends in the most relevant ones. That's how "it" in "the animal didn't cross the street because it was too tired" comes to mean the animal.</p>
+      <p class="breaks"><b>Where it breaks:</b> you know your aunt. The model has only the words in front of it, plus patterns learned from a huge amount of text.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="evening">
+    <p class="scene">Splitting one evening between relatives: everyone gets some time, the closest get more, and it all adds up to one evening.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#attention">Softmax</a></p>
+      <p>Softmax turns a list of scores into weights that are all positive and add up to 100%. Every word gets a little, and the most relevant get the most.</p>
+      <p class="breaks"><b>Where it breaks:</b> you might skip someone entirely. Softmax never gives exactly zero unless a word is deliberately masked out, which helps training: even a small share can be adjusted.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="loud">
+    <p class="scene">One relative talks so loudly that you can't hear anyone else. If everyone lowers their voice a bit, you hear a mix.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#attention">Scaling the scores by √dₖ</a></p>
+      <p>Raw attention scores can be large, and large scores make softmax all-or-nothing: one word gets almost 100%. Dividing every score by √64 = 8 keeps the weights balanced and training stable.</p>
+      <p class="breaks"><b>Where it breaks:</b> the loud relative is one person. In attention, every score is divided by the same number, so the order of scores never changes; only the gaps shrink.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="photo">
+    <p class="scene">Eight relatives look at the same wedding photo. One checks the outfits, one checks who's standing next to whom, one checks the decor. Together they see everything.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#heads">Multi-head attention</a></p>
+      <p>The Transformer runs attention 8 times in parallel, each head with its own query, key and value weights, so each learns to notice something different. Their results are joined and mixed by one more matrix, Wᴼ.</p>
+      <p class="breaks"><b>Where it breaks:</b> relatives choose what to look at. Heads aren't told; each one's focus emerges from training, and some are hard to explain.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="translate">
+    <p class="scene">Translating for the in-laws: you listen to the whole sentence first, then say it in the other language word by word, glancing back at what was said.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept tf"><a href="../transformer/#decoder">Encoder and decoder</a></p>
+      <p>The encoder reads the whole input sentence at once. The decoder writes the output one word at a time; in encoder-decoder attention its queries look up keys and values from the encoder, glancing back at the original.</p>
+      <p class="breaks"><b>Where it breaks:</b> you translate meaning in your head. The model produces one word at a time, choosing it from a probability for every word it knows.</p>
+    </div>
+  </article>
+</section>
+
+<section class="place" id="work" aria-labelledby="work-h">
+  <h2 id="work-h">At work</h2>
+  <p>Infrastructure work has the same shapes. Your instincts from running lab fleets already transfer to GPUs.</p>
+
+  <article class="pair" id="ci">
+    <p class="scene">A test pipeline where each tiny test spends longer on setup and teardown than on running. Batching tests into one job makes the whole run faster.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#overhead">Overhead and bigger operations</a></p>
+      <p>Lots of tiny GPU operations means lots of fixed launch costs. Bigger operations (larger batches, fused kernels, CUDA Graphs) spread that fixed cost over more useful work.</p>
+      <p class="breaks"><b>Where it breaks:</b> pipeline setup takes minutes. GPU launch overhead is microseconds, which only matters because the GPU itself is so fast.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="fleet">
+    <p class="scene">Lab devices sit idle because the scheduler can't hand out jobs fast enough, even though the devices themselves are powerful.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#overhead">GPU waiting on the CPU (low GPU-Util)</a></p>
+      <p>When the CPU can't queue work fast enough, the GPU finishes each job and waits. The profiler shows gaps on the GPU row, and <code>nvidia-smi</code> shows low GPU-Util. Expensive hardware becomes, in the essay's words, a paperweight.</p>
+      <p class="breaks"><b>Where it breaks:</b> a fleet has many schedulers and devices. Here it's one CPU feeding one GPU, millions of times a second.</p>
+    </div>
+  </article>
+
+  <article class="pair" id="artifacts">
+    <p class="scene">A build that keeps pulling the same artifacts from far-away storage. Caching them on the machine makes everything faster.</p>
+    <span class="eq" aria-hidden="true">≈</span>
+    <div class="idea">
+      <p class="concept brrr"><a href="../brrr/#memory">Memory hierarchy and fusion</a></p>
+      <p>Same idea as keeping data in SRAM: don't fetch from the slow, big store if you can reuse what's already close. Operator fusion keeps intermediate results in fast memory so they're never written out and read back.</p>
+      <p class="breaks"><b>Where it breaks:</b> a build cache lasts for days. On a GPU, fast memory holds data for microseconds, so kernels must be written to reuse it right away.</p>
+    </div>
+  </article>
+</section>
+
+<section class="recipe" aria-labelledby="recipe-h">
+  <h2 id="recipe-h">Make your own</h2>
+  <p>The best analogy is the one you notice yourself. When something in your day feels slow or clever, ask three questions:</p>
+  <ol>
+    <li><b>What's the real work here, and is it the slow part?</b> If not, speeding it up won't help. (compute)</li>
+    <li><b>What's being fetched or carried, and how often?</b> Could the trips be combined, or the things kept closer? (memory bandwidth, fusion)</li>
+    <li><b>What's the waiting and coordinating?</b> Is the same fixed cost paid again and again, when it could be paid once? (overhead)</li>
+  </ol>
+  <p class="eg">And for anything about understanding: <b>who is paying attention to whom, and why?</b> A conversation, a photo, a seating chart. That's self-attention.</p>
+</section>
+
+<section class="index" aria-labelledby="index-h">
+  <h2 id="index-h">Find an idea</h2>
+  <p>Every idea on this page, with the everyday scene that matches it.</p>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th scope="col">Idea</th><th scope="col">Seen in real life</th></tr></thead>
+    <tbody>
+      <tr><td><i style="background:var(--brrr)"></i>Three kinds of time</td><td><a href="#caterer">The caterer's day</a></td></tr>
+      <tr><td><i style="background:var(--brrr)"></i>Find the bottleneck</td><td><a href="#vegetables">Waiting for the vegetables</a></td></tr>
+      <tr><td><i style="background:var(--brrr)"></i>FLOPS</td><td><a href="#tandoor">Rotis per minute</a></td></tr>
+      <tr><td><i style="background:var(--brrr)"></i>Tensor Cores</td><td><a href="#mehendi">The mehendi artist</a></td></tr>
+      <tr><td><i style="background:var(--brrr)"></i>SRAM and DRAM</td><td><a href="#handbag">Handbag and trunk</a></td></tr>
+      <tr><td><i style="background:var(--brrr)"></i>Memory-bound</td><td><a href="#ironing">Ironing one shirt at a time</a></td></tr>
+      <tr><td><i style="background:var(--brrr)"></i>Operator fusion</td><td><a href="#market-run">One market run</a>, <a href="#artifacts">cached build artifacts</a></td></tr>
+      <tr><td><i style="background:var(--brrr)"></i>Compute intensity</td><td><a href="#tailor">Extra alterations at the tailor</a></td></tr>
+      <tr><td><i style="background:var(--brrr)"></i>Overhead</td><td><a href="#vendors">Calling each vendor</a>, <a href="#billing">the billing counter</a>, <a href="#ci">tiny tests</a></td></tr>
+      <tr><td><i style="background:var(--brrr)"></i>Double-the-batch test</td><td><a href="#chai">Chai for two</a></td></tr>
+      <tr><td><i style="background:var(--brrr)"></i>CPU running ahead</td><td><a href="#planner">The wedding planner</a>, <a href="#fleet">idle lab devices</a></td></tr>
+      <tr><td><i style="background:var(--brrr)"></i>Tracing and CUDA Graphs</td><td><a href="#broadcast">A WhatsApp broadcast list</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Self-attention</td><td><a href="#aunt">"She's arriving tomorrow"</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Query, key and value</td><td><a href="#seating">Finding your seat</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Softmax</td><td><a href="#evening">Splitting an evening</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Scaling by √dₖ</td><td><a href="#loud">The loud relative</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Multi-head attention</td><td><a href="#photo">Eight relatives, one photo</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Embedding</td><td><a href="#guest-list">The guest list as numbers</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Positional encoding</td><td><a href="#rituals">The order of rituals</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Residuals and layer norm</td><td><a href="#recipe">Mom's recipe</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Masking</td><td><a href="#speech">Writing the speech</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Encoder and decoder</td><td><a href="#translate">Translating for the in-laws</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Greedy and beam search</td><td><a href="#lehenga">Choosing the lehenga</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>One-hot encoding</td><td><a href="#rsvp">The RSVP card</a></td></tr>
+      <tr><td><i style="background:var(--tf)"></i>Loss and backpropagation</td><td><a href="#sangeet">Sangeet practice</a></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p>The ideas come from <a href="https://horace.io/brrr_intro.html" target="_blank" rel="noopener">Making Deep Learning Go Brrrr From First Principles</a> by Horace He and <a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">The Illustrated Transformer</a> by Jay Alammar. The everyday scenes are mine.</p>
+  <p><a href="../">See all decoded papers</a></p>
+</footer>
+</div>
+</body>
+</html>
