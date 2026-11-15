@@ -1,0 +1,86 @@
+/* Extra components for the math page; base styles come from ../transformer/styles.css */
+.equation { display: inline-block; max-width: 100%; overflow-x: auto; margin: 26px 0 10px; padding: 20px 26px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font: 700 clamp(1.35rem, 3.6vw, 2.4rem)/1.5 var(--display); white-space: nowrap; }
+.equation .sym { text-decoration: none; padding: 0 3px; border-bottom: 3px solid currentColor; border-radius: 3px; }
+.equation .sym:hover { background: #fff; }
+.s-q { color: var(--q); }
+.s-k { color: var(--k); }
+.s-v { color: var(--v-ink); }
+.s-ink { color: var(--ink); }
+.eq-caption { color: var(--ink-2); margin: 0 0 8px; max-width: 64ch; }
+.why-list { margin: 10px 0 0; padding-left: 1.3em; max-width: 64ch; }
+.why-list li { margin: 0 0 8px; }
+
+/* Matrices */
+.bench.wide { margin-left: 0; }
+.mat-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; overflow-x: auto; padding-bottom: 4px; }
+.mat-block { display: flex; flex-direction: column; align-items: center; }
+.mat-op { font: 800 1.6rem var(--display); color: var(--ink-2); }
+.mat-cap { font-size: .9rem; color: var(--ink-2); margin-top: 6px; text-align: center; }
+table.mat { border-collapse: separate; border-spacing: 3px; }
+table.mat th { font: 400 .8rem/1.2 var(--body); color: var(--ink-2); padding: 2px 4px; text-align: center; max-width: 7em; }
+table.mat th[scope="row"] { text-align: right; font-weight: 700; color: var(--ink); font-size: .92rem; }
+table.mat td { min-width: 2.8em; padding: 0; text-align: center; background: #fff; border: 1px solid var(--line); border-radius: 3px; font: 700 1rem var(--display); }
+table.mat td > span, table.mat td > button { display: block; padding: 6px 6px; }
+table.mat td > button { width: 100%; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+table.mat td.hl { background: var(--q-soft); border-color: var(--q); }
+table.mat td.hl2 { background: var(--k-soft); border-color: var(--k); }
+table.mat td.pick { background: var(--ink); border-color: var(--ink); color: #fff; }
+table.mat td.sym { background: var(--v-soft); border-color: var(--v); }
+.sum-line { margin: 16px 0 0; padding: 12px 14px; background: #fff; border-left: 5px solid var(--q); font: 1rem/1.7 var(--body); overflow-x: auto; }
+.sum-line b { font-family: var(--display); }
+
+/* Plots */
+.plot-wrap { display: grid; grid-template-columns: minmax(0, 400px) 1fr; gap: 28px; align-items: start; }
+.plot { width: 100%; height: auto; display: block; touch-action: none; }
+.plot text { font: 13px var(--body); fill: var(--ink-2); }
+.plot .lbl { font-weight: 700; font-size: 14px; }
+.handle { cursor: grab; }
+.handle:focus { outline: none; }
+.handle:focus-visible { stroke: var(--ink); stroke-width: 4; }
+.readout p { margin: 0 0 10px; }
+.big { font: 800 1.9rem/1.1 var(--display); }
+
+/* Number line for the random-vector demo */
+.numline { width: 100%; height: auto; display: block; margin: 6px 0 14px; }
+.numline text { font: 12px var(--body); fill: var(--ink-2); }
+
+/* Multi-head shape flow */
+.shape-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 4px; }
+.shape-flow .box { padding: 10px 12px; border-radius: 5px; background: #fff; border: 2px solid var(--line); font-size: .98rem; line-height: 1.35; }
+.shape-flow .box b { display: block; font-family: var(--display); }
+.shape-flow .box.q { border-color: var(--q); }
+.shape-flow .box.k { border-color: var(--k); }
+.shape-flow .arrow { color: var(--ink-2); font-weight: 700; }
+
+/* Positional clocks */
+.clocks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 8px; }
+.clock { text-align: center; }
+.clock svg { width: 100%; max-width: 150px; height: auto; display: block; margin: 0 auto; }
+.clock svg text { font: 12px var(--body); fill: var(--ink-2); }
+.clock p { margin: 4px 0 0; font-size: .9rem; color: var(--ink-2); }
+.clock p b { color: var(--ink); font-family: var(--display); }
+.pe-strip { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 16px; }
+.pe-strip div { background: #fff; border: 1px solid var(--line); border-radius: 3px; text-align: center; padding: 6px 2px; font: 700 .95rem var(--display); }
+.pe-strip div span { display: block; font: 400 .72rem var(--body); color: var(--ink-2); }
+
+/* Layer norm bars */
+.ln-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.ln-pair h4 { font: 700 1.02rem var(--display); margin: 0 0 4px; }
+.ln-pair .sub { color: var(--ink-2); font-size: .92rem; margin: 0 0 6px; }
+.ln-chart { width: 100%; height: auto; display: block; }
+.ln-chart text { font: 12px var(--body); fill: var(--ink-2); }
+
+/* Learning table */
+.loss-trail { font: 1rem var(--body); color: var(--ink-2); margin: 12px 0 0; overflow-wrap: anywhere; }
+
+/* Cost calculator bars need room for long labels and big numbers */
+#gpu-bars .hbar { grid-template-columns: minmax(150px, 270px) 1fr 130px; }
+
+@media (max-width: 860px) {
+  #gpu-bars .hbar { grid-template-columns: 1fr 110px; }
+  #gpu-bars .hbar .name { grid-column: 1 / -1; }
+  .plot-wrap, .ln-pair { grid-template-columns: 1fr; }
+  .clocks { grid-template-columns: repeat(2, 1fr); }
+  .pe-strip { grid-template-columns: repeat(4, 1fr); }
+  .equation { padding: 16px; }
+}

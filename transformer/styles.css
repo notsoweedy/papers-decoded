@@ -132,7 +132,7 @@ dfn { font-style: normal; font-weight: 700; border-bottom: 2px dotted currentCol
 .calc { width: 100%; border-collapse: collapse; font-size: 1rem; }
 .calc th, .calc td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
 .calc th { font: 700 .95rem var(--display); color: var(--ink-2); border-bottom: 2px solid var(--ink); }
-.calc td.num { font: 700 1.1rem var(--display); }
+.calc td.num { font: 700 1.1rem var(--display); color: var(--ink); }
 .calc .hide { visibility: hidden; }
 .calc tr.sum td { border-bottom: 0; }
 .mini { display: inline-flex; gap: 2px; vertical-align: middle; }

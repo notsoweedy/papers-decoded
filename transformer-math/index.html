@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The math inside attention: how a Transformer's vectors are computed, and why</title>
+<meta name="description" content="A hands-on walk through the math of the Transformer with a three-word example: dot products, matrix multiplication, queries, keys and values, softmax, the square-root scaling, positional encoding, layer norm and how the model learns.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../transformer/styles.css">
+<link rel="stylesheet" href="math.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="brand" href="../">Papers, decoded</a>
+  <nav aria-label="Chapters">
+    <a href="#vectors">Vectors</a>
+    <a href="#dot">Dot product</a>
+    <a href="#matmul">Matrices</a>
+    <a href="#qkv">Q, K, V</a>
+    <a href="#softmax">Softmax</a>
+    <a href="#positions">Positions</a>
+    <a href="#learning">Learning</a>
+    <a href="#gpu">GPU</a>
+  </nav>
+</header>
+
+<main>
+<section class="hero" aria-labelledby="title">
+  <h1 id="title">The math inside attention</h1>
+  <p class="lede">The <a href="../transformer/">Transformer guide</a> shows <em>what</em> attention does. This page shows <em>how</em> the numbers are computed and <em>why</em> each step is there. Every number below is calculated live from a three-word example you can poke at.</p>
+  <div class="equation" role="group" aria-label="The attention equation. Each part links to the chapter that explains it.">
+    <a class="sym s-ink" href="#weighted">Attention</a>(<a class="sym s-q" href="#qkv">Q</a>, <a class="sym s-k" href="#qkv">K</a>, <a class="sym s-v" href="#qkv">V</a>) =
+    <a class="sym s-ink" href="#softmax">softmax</a>( <a class="sym s-q" href="#scores">Q</a><a class="sym s-k" href="#scores">K<sup>T</sup></a> ÷ <a class="sym s-ink" href="#scale">√d<sub>k</sub></a> ) <a class="sym s-v" href="#weighted">V</a>
+  </div>
+  <p class="eq-caption">This one line is the heart of the Transformer, from the paper <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need</a>. Click any part to jump to it. By the end you'll know what every symbol does.</p>
+  <h3>Why compute anything at all?</h3>
+  <ul class="why-list">
+    <li><b>Computers only do arithmetic,</b> so every word has to become a list of numbers.</li>
+    <li><b>The model needs to measure relevance:</b> how much should "it" care about "animal"? A single number for "how related are these two lists" is exactly what a dot product gives.</li>
+    <li><b>The model has to learn its own rules.</b> Every step is smooth arithmetic, so we can ask "if I nudge this number, does the answer get better?" and nudge millions of numbers at once. That's training.</li>
+  </ul>
+</section>
+
+<!-- 1 -->
+<section class="chapter" id="vectors">
+  <div class="chapter-head"><span class="num">1</span><h2>Words are lists of numbers</h2></div>
+  <div class="indent prose">
+    <p>A <dfn>vector</dfn> is just a list of numbers. Each word starts as a vector called its <dfn>embedding</dfn>. In the paper it has 512 numbers, which is its <dfn>dimension</dfn>.</p>
+    <p>To keep every multiplication visible, this page uses a tiny model: 3 words from the sentence "The animal didn't cross the street because it was too tired", and 4 numbers per word. In a real model the numbers are learned and nobody gives them names. Here they have names so you can read them.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">The embedding matrix X</p>
+    <p class="bench-help">Stack the word vectors as rows and you get a <dfn>matrix</dfn>: a grid of numbers. This one has 3 rows (words) and 4 columns (features), so its <dfn>shape</dfn> is 3 × 4.</p>
+    <div class="mat-row"><div class="mat-block"><div id="x-table"></div><span class="mat-cap">X, shape 3 × 4</span></div></div>
+    <p class="note">"it" scores 1 on "pronoun": it needs to find what it refers to. Nothing yet tells it that the answer is "animal". Attention will.</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="chapter" id="dot">
+  <div class="chapter-head"><span class="num">2</span><h2>The dot product: one number for "how related?"</h2></div>
+  <div class="indent prose">
+    <p>The <dfn>dot product</dfn> of two vectors: multiply them number by number, then add it all up. For <b>a</b> = (a₁, a₂) and <b>b</b> = (b₁, b₂), it's a₁×b₁ + a₂×b₂.</p>
+    <p>Why this formula? It's big when the vectors point the same way, zero when they're at right angles, and negative when they point opposite ways. Geometrically, it's the length of <b>a</b> times the length of <b>b</b>'s shadow on <b>a</b>. So it's a natural "similarity score".</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Drag the arrows</p>
+    <p class="bench-help">Drag either arrow's tip, or focus a tip and use the arrow keys. Watch the score.</p>
+    <div class="plot-wrap">
+      <svg class="plot" id="dot-plot" viewBox="0 0 360 360" role="group" aria-label="Two vectors you can move"></svg>
+      <div class="readout" id="dot-read" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="chapter" id="matmul">
+  <div class="chapter-head"><span class="num">3</span><h2>Matrix multiplication: one recipe for every word at once</h2></div>
+  <div class="indent prose">
+    <p>A <dfn>weight matrix</dfn> is a recipe for turning a vector into a new vector. Each column of W says how much of each input feature to mix into one output number. Applying it to a word is a set of dot products, one per column.</p>
+    <p>Multiplying the whole matrix X by W does this for every word in one go: <dfn>matrix multiplication</dfn>. The rule for shapes: (3 × <b>4</b>) times (<b>4</b> × 2) gives 3 × 2. The inner numbers must match, and the outer ones give the result's shape.</p>
+    <p>This is why GPUs matter: matrix multiplication is the one thing <a href="../brrr/#compute">Tensor Cores</a> do at full speed.</p>
+  </div>
+  <div class="bench wide">
+    <p class="bench-title">Point at any result to see where it came from</p>
+    <p class="bench-help">Choose a recipe, then hover, tap or tab to a cell of the result. Each one is the dot product of a row of X and a column of W.</p>
+    <div class="controls" role="group" aria-label="Weight matrix">
+      <span class="label">Recipe:</span>
+      <button class="btn" data-w="Q" aria-pressed="true">W<sup>Q</sup> makes queries</button>
+      <button class="btn" data-w="K" aria-pressed="false">W<sup>K</sup> makes keys</button>
+      <button class="btn" data-w="V" aria-pressed="false">W<sup>V</sup> makes values</button>
+    </div>
+    <div class="mat-row">
+      <div class="mat-block"><div id="mm-x"></div><span class="mat-cap">X (3 × 4)</span></div>
+      <span class="mat-op" aria-hidden="true">×</span>
+      <div class="mat-block"><div id="mm-w"></div><span class="mat-cap" id="mm-wcap"></span></div>
+      <span class="mat-op" aria-hidden="true">=</span>
+      <div class="mat-block"><div id="mm-out"></div><span class="mat-cap" id="mm-outcap"></span></div>
+    </div>
+    <div class="sum-line" id="mm-sum" aria-live="polite"></div>
+    <p class="note">These weights are hand-picked so the example tells a clear story. A trained model learns its own, and in the paper each W<sup>Q</sup> is 512 × 64.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="chapter" id="qkv">
+  <div class="chapter-head"><span class="num">4</span><h2>Why three different vectors: Q, K and V</h2></div>
+  <div class="indent prose">
+    <p>Each word gets three vectors, made with three different recipes:</p>
+    <p><b class="c-q">Query</b> = x × W<sup>Q</sup>: what this word is looking for.<br><b class="c-k">Key</b> = x × W<sup>K</sup>: what this word offers, so others can find it.<br><b class="c-v">Value</b> = x × W<sup>V</sup>: what this word hands over once found.</p>
+    <p>Why not just compare the embeddings directly? Because looking for something and being that thing are different. "it" is a pronoun, but it's <em>looking for</em> a living thing. Its query can point somewhere its own embedding doesn't. And because the queries and keys use different recipes, "it" can care about "animal" a lot while "animal" barely cares about "it". Relationships in language are one-way like that.</p>
+  </div>
+  <div class="bench" id="scores">
+    <p class="bench-title">Queries meet keys</p>
+    <p class="bench-help">The violet arrows are every word's key. The teal arrow is the chosen word's query. The score is their dot product: queries that point toward a key score high with it.</p>
+    <div class="controls" role="group" aria-label="Word being read">
+      <span class="label">Reading:</span>
+      <button class="btn" data-sel="0">animal</button>
+      <button class="btn" data-sel="1">street</button>
+      <button class="btn" data-sel="2">it</button>
+      <label class="toggle" style="margin-left:6px"><input type="checkbox" id="shared"> Use one recipe for both Q and K</label>
+    </div>
+    <div class="plot-wrap">
+      <svg class="plot" id="qk-plot" viewBox="0 0 360 330" role="img" aria-label="Query and key vectors"></svg>
+      <div>
+        <h4 style="font:700 1.05rem var(--display);margin:0 0 8px">Scores: query · key</h4>
+        <div class="hbars" id="qk-bars"></div>
+        <h4 style="font:700 1.05rem var(--display);margin:18px 0 6px">All scores at once: Q K<sup>T</sup></h4>
+        <div id="qk-matrix"></div>
+        <p class="note" style="margin-top:6px">Row = word reading, column = word being looked at. K<sup>T</sup> is K <dfn>transposed</dfn>: flipped so its rows become columns, which lines every query up with every key in one matrix multiplication.</p>
+      </div>
+    </div>
+    <div class="verdict" id="qk-verdict"></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="chapter" id="softmax">
+  <div class="chapter-head"><span class="num">5</span><h2>From scores to percentages: scaling and softmax</h2></div>
+  <div class="indent prose">
+    <p>Raw scores can be any size and can be negative. We want <dfn>attention weights</dfn>: positive numbers that add up to 100%, so the result is a sensible blend. That's what <dfn>softmax</dfn> does:</p>
+    <p><code>weight<sub>i</sub> = e<sup>score<sub>i</sub></sup> ÷ (e<sup>score<sub>1</sub></sup> + e<sup>score<sub>2</sub></sup> + …)</code></p>
+    <p>Why <dfn>e<sup>x</sup></dfn> (the exponential)? It turns any number into a positive one, keeps the order (bigger score, bigger weight), and stretches gaps, so the best match stands out. And it's smooth, so it can be learned through. Dividing by the total makes everything add up to 100%.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Softmax, one column at a time</p>
+    <div class="controls" role="group" aria-label="Word being read">
+      <span class="label">Reading:</span>
+      <button class="btn" data-sel="0">animal</button>
+      <button class="btn" data-sel="1">street</button>
+      <button class="btn" data-sel="2">it</button>
+    </div>
+    <div class="table-scroll"><table class="calc" id="sm-table"></table></div>
+    <p class="note">Here d<sub>k</sub> = 2 (each key has 2 numbers), so we divide by √2 ≈ 1.41. In the paper d<sub>k</sub> = 64, so it's ÷ 8.</p>
+  </div>
+
+  <div class="indent prose" id="scale">
+    <h3>Why divide by √d<sub>k</sub>?</h3>
+    <p>A dot product adds up d<sub>k</sub> products. If the numbers are random-ish, more terms means bigger totals: the typical size of a score grows like √d<sub>k</sub>. That's a statistics fact about adding up random numbers. Their spread, the <dfn>standard deviation</dfn>, grows with the square root of how many you add.</p>
+    <p>Big scores make softmax all-or-nothing: one word gets nearly 100% and the rest get nearly 0. Then training stalls, because the nudges (gradients) through those near-0 weights are tiny. Dividing by √d<sub>k</sub> brings scores back to a typical size of about 1, whatever d<sub>k</sub> is.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">See it with random vectors</p>
+    <p class="bench-help">One random query against 8 random keys, each with d<sub>k</sub> numbers drawn from a bell curve. Change d<sub>k</sub> and turn the scaling on and off.</p>
+    <div class="controls">
+      <span class="label">d<sub>k</sub>:</span>
+      <button class="btn" data-dk="2">2</button>
+      <button class="btn" data-dk="64" aria-pressed="true">64</button>
+      <button class="btn" data-dk="512">512</button>
+      <label class="toggle" style="margin-left:6px"><input type="checkbox" id="rnd-scale"> <span>Divide by √d<sub>k</sub></span></label>
+      <button class="btn quiet" id="rnd-new">Draw new vectors</button>
+    </div>
+    <svg class="numline" id="rnd-line" viewBox="0 0 720 90" role="img" aria-label="The 8 scores on a number line"></svg>
+    <div class="hbars" id="rnd-bars"></div>
+    <div class="stats">
+      <div class="stat"><b id="rnd-sd"></b><span>typical score size (measured over 2,000 random pairs)</span></div>
+      <div class="stat"><b id="rnd-sqrt"></b><span>√d<sub>k</sub></span></div>
+      <div class="stat"><b id="rnd-max"></b><span>biggest attention weight</span></div>
+    </div>
+    <div class="verdict" id="rnd-verdict"></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="chapter" id="weighted">
+  <div class="chapter-head"><span class="num">6</span><h2>The weighted sum: borrowing meaning</h2></div>
+  <div class="indent prose">
+    <p>Last step of the equation: multiply each word's <span class="c-v">value</span> by its attention weight and add them up. The result <b>z</b> is the word's new vector, its own meaning blended with what it borrowed from the words it attended to.</p>
+    <p>As matrices: Z = A × V, where A holds every word's attention weights (3 × 3) and V holds every value (3 × 2). One more matrix multiplication.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Watch "it" absorb "animal"</p>
+    <div class="controls" role="group" aria-label="Word being read">
+      <span class="label">Reading:</span>
+      <button class="btn" data-sel="0">animal</button>
+      <button class="btn" data-sel="1">street</button>
+      <button class="btn" data-sel="2">it</button>
+    </div>
+    <div class="plot-wrap">
+      <svg class="plot" id="z-plot" viewBox="0 0 360 330" role="img" aria-label="Value vectors and the blended output"></svg>
+      <div class="readout" id="z-read" aria-live="polite"></div>
+    </div>
+    <div class="mat-row" style="margin-top:18px">
+      <div class="mat-block"><div id="z-a"></div><span class="mat-cap">A, attention weights (3 × 3)</span></div>
+      <span class="mat-op" aria-hidden="true">×</span>
+      <div class="mat-block"><div id="z-v"></div><span class="mat-cap">V (3 × 2)</span></div>
+      <span class="mat-op" aria-hidden="true">=</span>
+      <div class="mat-block"><div id="z-z"></div><span class="mat-cap">Z (3 × 2)</span></div>
+    </div>
+  </div>
+  <div class="indent prose">
+    <p>That's the whole equation: <b>scores</b> (Q K<sup>T</sup>), <b>scaled</b> (÷ √d<sub>k</sub>), turned into <b>weights</b> (softmax), used to <b>blend values</b> (× V). The rest of the Transformer is about doing this well, many times over.</p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="chapter" id="heads">
+  <div class="chapter-head"><span class="num">7</span><h2>Multi-head: the same math, eight times, side by side</h2></div>
+  <div class="indent prose">
+    <p>One softmax gives one blend, so one head tends to track one kind of relationship. The paper wants several at once (who "it" refers to, what's next to what, and so on), so it runs attention 8 times in parallel with 8 separate sets of W<sup>Q</sup>, W<sup>K</sup>, W<sup>V</sup>.</p>
+    <p>To keep the cost the same as one big head, each head works in a smaller space: 512 ÷ 8 = 64 numbers. Then the 8 results are <dfn>concatenated</dfn> (joined end to end) back to 512, and one more matrix, W<sup>O</sup>, mixes what the heads found.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Shapes through one multi-head attention layer</p>
+    <p class="bench-help">n is the number of words in the sentence.</p>
+    <div class="shape-flow">
+      <div class="box"><b>X</b>n × 512</div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div class="box q"><b>8 heads, each with its own</b>W<sup>Q</sup>, W<sup>K</sup>, W<sup>V</sup>: 512 × 64</div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div class="box"><b>Per head</b>Q, K, V: n × 64<br>scores: n × n<br>Z<sub>i</sub>: n × 64</div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div class="box"><b>Concatenate</b>8 × 64 = n × 512</div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div class="box k"><b>× W<sup>O</sup></b>512 × 512</div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div class="box"><b>Output</b>n × 512</div>
+    </div>
+    <p class="note">Same size in, same size out. That's what lets the layers stack: every layer takes and returns n × 512.</p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="chapter" id="positions">
+  <div class="chapter-head"><span class="num">8</span><h2>Positional encoding: clocks with different speeds</h2></div>
+  <div class="indent prose">
+    <p>Nothing in the attention equation knows word order. Shuffle the words and you get the same scores, just shuffled. So before the first layer, each word's embedding gets a position vector <em>added</em> to it:</p>
+    <p><code>PE(pos, 2i) = sin(pos ÷ 10000<sup>2i/d</sup>)</code> and <code>PE(pos, 2i+1) = cos(pos ÷ 10000<sup>2i/d</sup>)</code></p>
+    <p>Read it as clocks. Each pair of numbers (a sine and a cosine) is the tip of a clock hand. Hand <i>i</i> turns pos × ω<sub>i</sub> radians, where ω<sub>i</sub> = 1 ÷ 10000<sup>2i/d</sup> is its speed. The first hand spins fast like a seconds hand; later ones crawl like hour hands. Together they give every position a unique reading, like a clock showing a unique time.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Move through the sentence</p>
+    <p class="bench-help">A small model with d = 8, so 4 hands. Drag the position. Then add an offset k to see where position pos + k lands (dashed).</p>
+    <div class="slider-row">
+      <input type="range" id="pe-pos" min="0" max="100" value="3" aria-label="Position in the sentence">
+      <span class="slider-val" id="pe-pos-val"></span>
+    </div>
+    <div class="slider-row">
+      <input type="range" id="pe-k" min="0" max="10" value="0" aria-label="Offset k">
+      <span class="slider-val" id="pe-k-val"></span>
+    </div>
+    <div class="clocks" id="clocks"></div>
+    <div class="pe-strip" id="pe-strip" aria-label="The 8 numbers added to the embedding"></div>
+    <div class="verdict" id="pe-verdict"></div>
+  </div>
+  <div class="indent prose">
+    <p>Why this design? The values stay between −1 and 1, so they never swamp the embedding. Any length works, even longer than anything seen in training. And moving k words later turns every hand by a fixed angle, whatever pos is. That turn is a fixed matrix multiplication (a <dfn>rotation</dfn>), so a head can learn a rule like "look 2 words back" once and use it everywhere.</p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="chapter" id="norm">
+  <div class="chapter-head"><span class="num">9</span><h2>Add &amp; Norm, and the feed-forward network</h2></div>
+  <div class="indent prose">
+    <h3>The residual: output = x + Sublayer(x)</h3>
+    <p>Each sub-layer's input is added back to its output. Why: the layer only has to learn a correction, and during training the nudges flow straight back through the "+" without fading. That's what makes a stack of many layers trainable.</p>
+    <h3>Layer norm: (x − mean) ÷ spread, then × γ + β</h3>
+    <p>After each addition, every word's vector is recentred to mean 0 and rescaled to a spread (standard deviation) of 1. Then two learned numbers per feature, γ (scale) and β (shift), let the model choose the final range. Why: after many layers, numbers would otherwise drift huge or tiny, and the next layer would have to cope with any scale.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Layer norm keeps the shape, fixes the scale</p>
+    <p class="bench-help">Change the vector and watch the normalized version.</p>
+    <div class="controls">
+      <button class="btn" id="ln-x10">Multiply by 10</button>
+      <button class="btn" id="ln-add">Add 5 to everything</button>
+      <button class="btn quiet" id="ln-reset">Reset</button>
+    </div>
+    <div class="ln-pair">
+      <div><h4>Before</h4><p class="sub" id="ln-before-stats"></p><svg class="ln-chart" id="ln-before" viewBox="0 0 320 170" role="img" aria-label="Vector before layer norm"></svg></div>
+      <div><h4>After layer norm</h4><p class="sub" id="ln-after-stats"></p><svg class="ln-chart" id="ln-after" viewBox="0 0 320 170" role="img" aria-label="Vector after layer norm"></svg></div>
+    </div>
+    <div class="verdict" id="ln-verdict"></div>
+  </div>
+  <div class="indent prose">
+    <h3>The feed-forward network: max(0, x W<sub>1</sub> + b<sub>1</sub>) W<sub>2</sub> + b<sub>2</sub></h3>
+    <p>Attention moves information <em>between</em> words. The <dfn>feed-forward network</dfn> then processes each word <em>on its own</em>: expand 512 numbers to 2,048 with W<sub>1</sub>, apply <dfn>ReLU</dfn> (keep positives, turn negatives into 0), then shrink back to 512 with W<sub>2</sub>. The b's are <dfn>biases</dfn>, small learned offsets.</p>
+    <p>Why the ReLU? Without it, two matrix multiplications in a row collapse into one, and the network could only learn straight-line relationships. The bend at zero is what lets it learn more complicated rules. About two thirds of a Transformer's weights live in these networks.</p>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="chapter" id="learning">
+  <div class="chapter-head"><span class="num">10</span><h2>From vector to word, and how it learns</h2></div>
+  <div class="indent prose">
+    <p>The top of the decoder gives a 512-number vector h. A <dfn>linear layer</dfn> multiplies it by a 512 × vocabulary matrix to get one score per word, the <dfn>logits</dfn>. Softmax turns them into probabilities, and the model picks a word.</p>
+    <p>In training we know the right word, so we measure how wrong we were with <dfn>cross-entropy</dfn>: loss = −log(probability of the right word). It's 0 when the model is certain and right, and huge when the right word got almost nothing.</p>
+    <p>Then comes the step that makes everything learnable. For softmax with cross-entropy, the <dfn>gradient</dfn> of the loss with respect to each logit is simply <b>probability − target</b>. It's positive for wrong words (push down) and negative for the right word (push up). <dfn>Gradient descent</dfn> nudges each number a little against its gradient.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Train the output layer by hand</p>
+    <p class="bench-help">The right answer is "thanks". Each step subtracts (probability − target) × learning rate from every logit. This is real gradient descent on the logits.</p>
+    <div class="controls">
+      <button class="btn" id="gd-step">Take one learning step</button>
+      <button class="btn quiet" id="gd-reset">Reset</button>
+      <span class="label" id="gd-count"></span>
+    </div>
+    <div class="table-scroll"><table class="calc" id="gd-table"></table></div>
+    <div class="stats">
+      <div class="stat"><b id="gd-p"></b><span>probability of "thanks"</span></div>
+      <div class="stat"><b id="gd-loss"></b><span>loss = −log(p)</span></div>
+    </div>
+    <p class="loss-trail" id="gd-trail"></p>
+  </div>
+  <div class="indent prose">
+    <p>In a real model the same idea flows further back. The <dfn>chain rule</dfn> passes the nudges through the linear layer, the feed-forward networks, W<sup>O</sup>, every W<sup>V</sup>, W<sup>K</sup>, W<sup>Q</sup> and the embeddings themselves. This is <dfn>backpropagation</dfn>. Every number on this page would get its own small nudge, millions of times. That's how hand-picked weights like ours become learned ones.</p>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="chapter" id="gpu">
+  <div class="chapter-head"><span class="num">11</span><h2>Where the GPU comes in</h2></div>
+  <div class="indent prose">
+    <p>Now the math connects back to <a href="../brrr/">Making Deep Learning Go Brrrr</a>. Count the work in one attention layer (d = 512, 8 heads) for a sentence of n words.</p>
+  </div>
+  <div class="bench">
+    <p class="bench-title">Attention cost calculator</p>
+    <div class="slider-row">
+      <input type="range" id="n-len" min="0" max="7" value="2" aria-label="Sentence length in words">
+      <span class="slider-val" id="n-val"></span>
+    </div>
+    <div class="hbars" id="gpu-bars"></div>
+    <div class="stats">
+      <div class="stat"><b id="gpu-mem"></b><span>size of the score tables (all 8 heads, 16-bit numbers, one layer)</span></div>
+    </div>
+    <div class="verdict" id="gpu-verdict"></div>
+  </div>
+  <div class="indent prose">
+    <p>The weight multiplications (Q, K, V and W<sup>O</sup>: 8 × n × d² operations) grow in step with n. The attention part (Q K<sup>T</sup> and × V: 4 × n² × d) grows with n², so it takes over for long sentences.</p>
+    <p>Scaling, masking and softmax touch every number in those n × n tables but do almost no math on each. That's <a href="../brrr/#memory">memory-bound</a> work, the exact pattern from the Brrrr essay. <a href="https://arxiv.org/abs/2205.14135" target="_blank" rel="noopener">FlashAttention</a> fixes it with <a href="../brrr/#memory">operator fusion</a>: it computes attention in tiles inside fast memory, so the big table never goes to DRAM.</p>
+  </div>
+</section>
+
+<section class="chapter" id="shapes">
+  <h2>Every shape in one table</h2>
+  <div class="prose"><p>The paper's sizes: d = 512, 8 heads, d<sub>k</sub> = 64, feed-forward 2,048. n is the number of words.</p></div>
+  <div class="table-scroll">
+  <table class="recap">
+    <thead><tr><th scope="col">Step</th><th scope="col">Math</th><th scope="col">Shape</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Embeddings + positions: X</td><td>n × 512</td></tr>
+      <tr><td>2</td><td>Q = X W<sup>Q</sup>, K = X W<sup>K</sup>, V = X W<sup>V</sup> (per head)</td><td>W: 512 × 64 → Q, K, V: n × 64</td></tr>
+      <tr><td>3</td><td>Scores Q K<sup>T</sup> ÷ √64</td><td>n × n</td></tr>
+      <tr><td>4</td><td>A = softmax(scores), row by row</td><td>n × n, each row adds to 1</td></tr>
+      <tr><td>5</td><td>Z<sub>i</sub> = A V (per head)</td><td>n × 64</td></tr>
+      <tr><td>6</td><td>Concatenate 8 heads, × W<sup>O</sup></td><td>n × 512, W<sup>O</sup>: 512 × 512</td></tr>
+      <tr><td>7</td><td>Add &amp; Norm: LayerNorm(x + sublayer(x))</td><td>n × 512</td></tr>
+      <tr><td>8</td><td>Feed-forward: ReLU(x W<sub>1</sub> + b<sub>1</sub>) W<sub>2</sub> + b<sub>2</sub></td><td>512 → 2,048 → 512</td></tr>
+      <tr><td>9</td><td>Logits = h × W<sub>vocab</sub>, then softmax</td><td>n × vocabulary size</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="chapter" id="check">
+  <h2>Check yourself</h2>
+  <p class="score" id="score" aria-live="polite"></p>
+  <div class="quiz" id="quiz" style="margin-left:0"></div>
+</section>
+
+<section class="chapter" id="glossary">
+  <h2>Math glossary</h2>
+  <div class="prose"><p>Every math term on this page, in plain words.</p></div>
+  <label for="gfilter" class="bench-help" style="display:block;margin:0">Search the glossary</label>
+  <input class="filter" id="gfilter" type="search" placeholder="Try dot, softmax or gradient">
+  <dl class="glossary" id="gloss"></dl>
+  <p class="empty" id="gempty" hidden>No terms match. Try a shorter word.</p>
+</section>
+</main>
+
+<footer>
+  <p>A companion to <a href="../transformer/">How a Transformer reads a sentence</a>, my guide to Jay Alammar's <a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">The Illustrated Transformer</a>. The equations are from <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need</a> (Vaswani et al., 2017). The three-word example and its weights are made up for teaching; all numbers are computed live.</p>
+  <p><a href="../">See all decoded papers</a>. Everyday versions of these ideas: <a href="../analogies/">Seen in real life</a>.</p>
+</footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

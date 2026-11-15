@@ -6,6 +6,7 @@ Papers and essays I'm learning from, rebuilt as interactive guides that anyone c
 
 | Guide | Original | What you'll learn |
 |---|---|---|
+| [The math inside attention](https://notsoweedy.github.io/papers-decoded/transformer-math/) | [Attention Is All You Need](https://arxiv.org/abs/1706.03762), Vaswani et al., 2017 | How Q, K and V are computed and why: dot products, matrix multiplication, softmax and √dₖ, positional encoding, layer norm, gradient descent |
 | [How a Transformer reads a sentence](https://notsoweedy.github.io/papers-decoded/transformer/) | [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/), Jay Alammar, 2018 (CC BY-NC-SA 4.0) | Self-attention, queries, keys and values, multi-head attention, positional encoding, masking, greedy decoding and beam search |
 | [Where does your GPU's time go?](https://notsoweedy.github.io/papers-decoded/brrr/) | [Making Deep Learning Go Brrrr From First Principles](https://horace.io/brrr_intro.html), Horace He, 2022 | Compute-bound vs memory-bound vs overhead-bound, operator fusion, compute intensity, CUDA Graphs |
 
@@ -20,6 +21,7 @@ brrr/             Making Deep Learning Go Brrrr
   styles.css
   app.js
 transformer/      The Illustrated Transformer (same three files)
+transformer-math/ The math inside attention (reuses transformer/styles.css, plus math.css)
 analogies/        Seen in real life: everyday scenes paired with ideas from the guides
 .nojekyll         tells GitHub Pages to serve files as they are
 ```
